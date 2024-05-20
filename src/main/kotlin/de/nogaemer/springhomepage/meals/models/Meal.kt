@@ -1,5 +1,8 @@
 package de.nogaemer.springhomepage.meals.models
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
+import de.nogaemer.springhomepage.meals.ratings.Rating
 import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor
@@ -17,13 +20,15 @@ data class Meal(
     val ingredients: List<Ingredient>,
     val instructions: List<String>,
     val tags: List<String>,
-    val imageUrl: List<String>,
-    val difficulty: Int,
-    val time: Int,
+    val imageUrls: List<String>,
+    val difficulty: String,
+    val time: Long,
     val portions: Int,
     val calories: Int,
+    val url: String = ""
 ){
     @Id
+    @field:JsonSerialize(using = ToStringSerializer::class)
     private var id: ObjectId? = null
 
     @DocumentReference
