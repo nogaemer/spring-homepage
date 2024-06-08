@@ -1,6 +1,7 @@
 package de.nogaemer.springhomepage.security.auth
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.security.config.JwtService
 import de.nogaemer.springhomepage.security.token.Token
 import de.nogaemer.springhomepage.security.token.TokenRepository
@@ -115,19 +116,18 @@ class AuthenticationService {
         }
         val refreshToken = authHeader.substring(7)
         userLogin = jwtService!!.extractUsername(refreshToken)
-        if (userLogin != null) {
-            val user = repository!!.findByLogin(userLogin)
-                .orElseThrow()
-            if (jwtService.isTokenValid(refreshToken, user)) {
-                val accessToken = jwtService.generateToken(user)
-                revokeAllUserTokens(user)
-                saveUserToken(user, accessToken)
-                val authResponse = AuthenticationResponse(
-                    accessToken,
-                    refreshToken
-                )
-                ObjectMapper().writeValue(response.outputStream, authResponse)
-            }
+        val user = repository!!.findByLogin(userLogin)
+            .orElseThrow { NotFoundException("User not found") }
+        if (jwtService.isTokenValid(refreshToken, user)) {
+            val accessToken = jwtService.generateToken(user)
+            revokeAllUserTokens(user)
+            saveUserToken(user, accessToken)
+            val authResponse = AuthenticationResponse(
+                accessToken,
+                refreshToken
+            )
+            response.contentType = "application/json"
+            ObjectMapper().writeValue(response.outputStream, authResponse)
         }
     }
 }

@@ -131,14 +131,19 @@ internal class Chefkoch {
         val imageUrls = mutableListOf<String>()
 
         page!!.select(".ds-mb-left > #recipe-image-carousel > .recipe-image-carousel-slide").forEach { image ->
-            val imageUrl = image.select("a > amp-img").attr("src")
+            var imageUrl = image.select("a > amp-img").attr("srcset")
+                .split(",").last()
 
             if (imageUrl.isEmpty()) {
-                return@forEach
+                imageUrl = image.select("a > amp-img").attr("src")
+
+                if (imageUrl.isEmpty()) {
+                    return@forEach
+                }
             }
 
             if (!imageUrls.contains(imageUrl)) {
-                imageUrls.add(image.select("a > amp-img").attr("src"))
+                imageUrls.add(imageUrl)
             }
         }
 

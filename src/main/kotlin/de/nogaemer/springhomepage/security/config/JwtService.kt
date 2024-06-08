@@ -92,12 +92,16 @@ class JwtService {
     }
 
     private fun extractAllClaims(token: String?): Claims {
-        return Jwts
-            .parserBuilder()
-            .setSigningKey(signInKey)
-            .build()
-            .parseClaimsJws(token)
-            .body
+        try {
+            return Jwts
+                .parserBuilder()
+                .setSigningKey(signInKey)
+                .build()
+                .parseClaimsJws(token)
+                .body
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Invalid token")
+        }
     }
 
     private val signInKey: Key

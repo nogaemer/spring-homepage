@@ -9,9 +9,11 @@ import org.springframework.stereotype.Repository
 @Repository
 interface MealRepository : MongoRepository<Meal, ObjectId> {
 
-    fun findByName(name: String?): Meal
+    fun findByName(name: String?): List<Meal>?
 
-    fun findByUrl(url: String?): Meal
+    fun findById(id: ObjectId?): Meal?
+
+    fun findByUrl(url: String?): Meal?
 
     @Query(value = " {'url': ?0} ", count = true)
     fun countByUrl(url: String?): Int

@@ -47,7 +47,6 @@ class RatingController {
     fun deleteRating(
         @PathVariable id: String
     ): ResponseEntity<*> {
-        println(id)
         service!!.delete(ObjectId(id))
         return ResponseEntity.ok().build<String>()
     }

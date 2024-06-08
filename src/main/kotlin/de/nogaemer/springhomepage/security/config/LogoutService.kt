@@ -29,13 +29,11 @@ class LogoutService : LogoutHandler {
         }
         val jwt = authHeader.substring(7)
         val storedToken = tokenRepository!!.findByToken(jwt)
-            ?: null
+            ?: return
 
-        if (storedToken != null) {
-            storedToken.expired = true
-            storedToken.revoked = true
-            tokenRepository.save<Token>(storedToken)
-            SecurityContextHolder.clearContext()
-        }
+        storedToken.expired = true
+        storedToken.revoked = true
+        tokenRepository.save<Token>(storedToken)
+        SecurityContextHolder.clearContext()
     }
 }

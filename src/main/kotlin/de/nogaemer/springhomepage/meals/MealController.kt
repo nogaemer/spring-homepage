@@ -3,8 +3,8 @@ package de.nogaemer.springhomepage.meals
 import de.nogaemer.springhomepage.meals.import.MealImportUrl
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.models.MealImportMethod
+import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -15,16 +15,21 @@ class MealController {
     @Autowired
     private val service: MealService? = null
 
+
     @GetMapping
-    fun getMeals(): ResponseEntity<List<Meal>> {
-        return ResponseEntity<List<Meal>>(service?.findAll(), HttpStatus.OK)
+    fun getMealsByName(
+        @RequestParam name: String?
+    ): ResponseEntity<List<Meal>> {
+        return ResponseEntity<List<Meal>>(service?.findByName(name), HttpStatus.OK)
     }
 
-    @GetMapping("/{name}")
+    @GetMapping("/{id}")
     fun getSingleMeal(
-        @PathVariable name: String?
+        @PathVariable id: ObjectId?
     ): ResponseEntity<Meal> {
-        val response = service!!.findByName(name)
+        id ?: throw IllegalArgumentException("Id is null")
+
+        val response = service!!.findById(id)
         return ResponseEntity.ok(response)
     }
 

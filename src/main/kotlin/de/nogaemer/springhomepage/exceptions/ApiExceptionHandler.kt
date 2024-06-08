@@ -33,7 +33,11 @@ class ApiExceptionHandler {
             path = request.requestURI
         )
 
-        return ResponseEntity.status(code).body(exception)
+        println(exception.localizedMessage)
+        println(exception.stackTraceToString())
+        println(exception.cause)
+
+        return ResponseEntity.status(code).body(errorInfo)
     }
 }
 

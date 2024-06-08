@@ -25,7 +25,8 @@ data class Meal(
     val time: Long,
     val portions: Int,
     val calories: Int,
-    val url: String = ""
+    val url: String = "",
+    var rating: Double = 0.0
 ){
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)
@@ -33,5 +34,11 @@ data class Meal(
 
     @DocumentReference
     var ratings: List<Rating> = emptyList()
+
+    fun calculateRating(): Double {
+        ratings.map { println(it.rating) }
+        if (ratings.isEmpty()) return 0.0
+        return ratings.map { it.rating }.average()
+    }
 }
 

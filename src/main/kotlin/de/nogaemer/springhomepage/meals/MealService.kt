@@ -19,7 +19,9 @@ class MealService {
         return repository!!.findAll()
     }
 
-    fun findByName(name: String?): Meal {
+    fun findByName(name: String?): List<Meal>? {
+        name ?: return findAll()
+
         return repository!!.findByName(name)
     }
 
