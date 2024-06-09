@@ -34,24 +34,5 @@ class SpringHomepageApplication {
 }
 
 fun main(args: Array<String>) {
-    runApplication<SpringHomepageApplication>(*args){
-        addInitializers(EnvironmentVariablesLogger())
-    }
-}
-
-class EnvironmentVariablesLogger : ApplicationContextInitializer<ConfigurableApplicationContext> {
-    override fun initialize(applicationContext: ConfigurableApplicationContext) {
-        val environment: Environment = applicationContext.environment
-        val mongoDatabase = environment.getProperty("env.MONGO_DATABASE")
-        val mongoUser = environment.getProperty("env.MONGO_USER")
-        val mongoPassword = environment.getProperty("env.MONGO_PASSWORD")
-        val mongoCluster = environment.getProperty("env.MONGO_CLUSTER")
-        val jwtSecretKey = environment.getProperty("env.JWT_SECRET_KEY")
-
-        println("MONGO_DATABASE: $mongoDatabase")
-        println("MONGO_USER: $mongoUser")
-        println("MONGO_PASSWORD: $mongoPassword")
-        println("MONGO_CLUSTER: $mongoCluster")
-        println("JWT_SECRET_KEY: $jwtSecretKey")
-    }
+    runApplication<SpringHomepageApplication>(*args)
 }
