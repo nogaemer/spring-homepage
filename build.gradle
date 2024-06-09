@@ -44,6 +44,10 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 }
 
+bootRun {
+    jvmArgs = ['-Xmx512m']
+}
+
 tasks.withType(KotlinCompile) {
     kotlinOptions {
         freeCompilerArgs += '-Xjsr305=strict'
