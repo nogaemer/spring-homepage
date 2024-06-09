@@ -1,8 +1,11 @@
 package de.nogaemer.springhomepage.security.config
 
+import de.nogaemer.springhomepage.exceptions.AuthorisationRequired
+import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.user.User
 import de.nogaemer.springhomepage.user.UserRepository
 import io.jsonwebtoken.Claims
+import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.io.Decoders
@@ -99,8 +102,11 @@ class JwtService {
                 .build()
                 .parseClaimsJws(token)
                 .body
+        } catch (e: ExpiredJwtException) {
+            throw AuthorisationRequired("Token is expired")
         } catch (e: Exception) {
-            throw IllegalArgumentException("Invalid token")
+            println("Failed to parse token: $e")
+            throw AuthorisationRequired("Token is invalid")
         }
     }
 

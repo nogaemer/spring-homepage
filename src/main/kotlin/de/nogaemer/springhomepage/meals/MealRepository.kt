@@ -14,6 +14,8 @@ interface MealRepository : MongoRepository<Meal, ObjectId> {
 
     fun findById(id: ObjectId?): Meal?
 
+    fun findByName(name: String?): Meal?
+
     fun findByUrl(url: String?): Meal?
 
     @Query(value = " {'url': ?0} ", count = true)

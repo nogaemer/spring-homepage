@@ -16,6 +16,10 @@ data class NotFoundException(
     override val message: String,
 ): RuntimeException(message)
 
+data class AuthorisationRequired(
+    override val message: String,
+): RuntimeException(message)
+
 data class TagNotFoundException(
     override val message: String,
 ): RuntimeException(message)

@@ -20,7 +20,7 @@ data class Meal(
     val ingredients: List<Ingredient>,
     val instructions: List<String>,
     val tags: List<String>,
-    val imageUrls: List<String>,
+    val imageSrc: List<String>,
     val imageSrcSet: List<String>,
     val difficulty: String,
     val time: Long,

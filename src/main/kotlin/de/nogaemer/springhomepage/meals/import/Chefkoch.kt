@@ -25,7 +25,7 @@ internal class Chefkoch {
             ingredients = getIngredients(),
             instructions = getInstructions(),
             tags = getTags(),
-            imageUrls = getImageUrl(),
+            imageSrc = getImageUrl(),
             imageSrcSet = getImageUrls(),
             difficulty = getDifficulty(),
             time = getTime(),
@@ -59,7 +59,6 @@ internal class Chefkoch {
             if (it.data().contains("\"@type\": \"Recipe\"")) {
                 jsonData = JSONObject(it.data().toString())
             }
-            return@forEach
         }
     }
 

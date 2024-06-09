@@ -35,6 +35,12 @@ class MealService {
     }
 
     fun create(meal: Meal): Meal {
+
+        val existingMeal = repository!!.findByName(meal.name)
+        if (existingMeal != null) {
+            throw AlreadyReported("Meal with name ${meal.name} already exists", existingMeal)
+        }
+
         return repository!!.save(meal)
     }
 
