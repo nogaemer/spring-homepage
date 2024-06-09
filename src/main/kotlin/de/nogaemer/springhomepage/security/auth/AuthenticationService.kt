@@ -1,6 +1,7 @@
 package de.nogaemer.springhomepage.security.auth
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import de.nogaemer.springhomepage.exceptions.AuthorisationRequired
 import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.security.config.JwtService
 import de.nogaemer.springhomepage.security.token.Token
@@ -125,6 +126,7 @@ class AuthenticationService {
             val oldAccessToken = tokenRepository!!.findTokenByUserAndToken(user, refreshToken)
             oldAccessToken?.let {
                 it.revoked = true
+                it.expired = true
                 tokenRepository.save(it)
             }
             // Generate a new access token
@@ -140,7 +142,15 @@ class AuthenticationService {
 
     @Scheduled(fixedRate = 3600000) // runs every hour
     fun removeExpiredTokens() {
-        val expiredTokens = tokenRepository!!.findAll().filter { jwtService!!.isTokenExpired(it.token) }
+        val allTokens = tokenRepository!!.findAll()
+        val expiredTokens = allTokens.filter {
+            try {
+                jwtService!!.isTokenExpired(it.token)
+            } catch (e: AuthorisationRequired) {
+                println("Failed to parse token: ${it.token}")
+                false
+            }
+        }
         tokenRepository.deleteAll(expiredTokens)
     }
 }

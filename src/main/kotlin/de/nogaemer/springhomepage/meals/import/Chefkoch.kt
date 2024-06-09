@@ -59,7 +59,7 @@ internal class Chefkoch {
             if (it.data().contains("\"@type\": \"Recipe\"")) {
                 jsonData = JSONObject(it.data().toString())
             }
-            return@forEach
+            return
         }
     }
 

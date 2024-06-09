@@ -64,11 +64,13 @@ class MealImportController {
     @GetMapping("/meal")
     fun getMeal(
         @RequestParam(value = "importTag", defaultValue = "chefkoch") importTag: String,
-        @RequestBody import: MealImportUrl
+        @RequestParam(value = "url") url: String?,
     ): ResponseEntity<Meal> {
+        url?: throw IllegalArgumentException("Url is null")
+
         val tag = MealImportMethod.valueOf(importTag.uppercase())
 
-        return ResponseEntity(service!!.importMeal(tag, import.url, false), HttpStatus.CREATED)
+        return ResponseEntity(service!!.importMeal(tag, url, false), HttpStatus.CREATED)
     }
 
     @PostMapping("/meal")

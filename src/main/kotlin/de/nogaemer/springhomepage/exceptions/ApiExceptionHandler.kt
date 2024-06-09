@@ -19,6 +19,7 @@ class ApiExceptionHandler {
             is IdNotFoundException -> HttpStatus.NOT_FOUND
             is TagNotFoundException -> HttpStatus.NOT_FOUND
             is AlreadyReported -> HttpStatus.ALREADY_REPORTED
+            is AuthorisationRequired -> HttpStatus.UNAUTHORIZED
             is AppException -> exception.statusCode
             else -> HttpStatus.INTERNAL_SERVER_ERROR
         }
