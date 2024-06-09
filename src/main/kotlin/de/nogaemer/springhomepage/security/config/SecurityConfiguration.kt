@@ -76,6 +76,7 @@ class SecurityConfiguration {
 
     companion object {
         private val WHITE_LIST_URL = arrayOf(
+            "/",
             "/api/v1/auth/**",
             "/v2/api-docs",
             "/v3/api-docs",
