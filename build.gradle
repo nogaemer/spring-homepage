@@ -45,7 +45,7 @@ dependencies {
 }
 
 bootRun {
-    jvmArgs = ['-Xmx512m']
+    jvmArgs = ['-Xmx256m']
 }
 
 tasks.withType(KotlinCompile) {
