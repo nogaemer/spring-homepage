@@ -1,9 +1,12 @@
 package de.nogaemer.springhomepage
 
+import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.core.env.Environment
 import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
@@ -30,4 +33,21 @@ class SpringHomepageApplication {
 
 fun main(args: Array<String>) {
     runApplication<SpringHomepageApplication>(*args)
+}
+
+@Component
+class EnvironmentVariablesLogger(private val environment: Environment) : CommandLineRunner {
+    override fun run(vararg args: String?) {
+        val mongoDatabase = environment.getProperty("env.MONGO_DATABASE")
+        val mongoUser = environment.getProperty("env.MONGO_USER")
+        val mongoPassword = environment.getProperty("env.MONGO_PASSWORD")
+        val mongoCluster = environment.getProperty("env.MONGO_CLUSTER")
+        val jwtSecretKey = environment.getProperty("env.JWT_SECRET_KEY")
+
+        println("MONGO_DATABASE: $mongoDatabase")
+        println("MONGO_USER: $mongoUser")
+        println("MONGO_PASSWORD: $mongoPassword")
+        println("MONGO_CLUSTER: $mongoCluster")
+        println("JWT_SECRET_KEY: $jwtSecretKey")
+    }
 }
