@@ -1,8 +1,5 @@
-FROM ubuntu:latest AS build
-
-# Update package list and install dependencies
-RUN apt-get update && apt-get install -y openjdk-20-jdk --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+# Use the Eclipse Temurin image for the build stage
+FROM eclipse-temurin:20-jdk AS build
 
 # Copy the project files to the container
 COPY . .
@@ -10,8 +7,8 @@ COPY . .
 # Build the application
 RUN ./gradlew bootJar --no-daemon
 
-# Use a lightweight image for the final stage
-FROM openjdk:20-jdk-slim
+# Use the same Eclipse Temurin image for the final stage
+FROM eclipse-temurin:20-jdk
 
 # Expose the port the application runs on
 EXPOSE 8080
