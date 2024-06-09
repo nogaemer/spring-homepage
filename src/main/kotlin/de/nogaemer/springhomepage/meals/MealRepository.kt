@@ -9,7 +9,8 @@ import org.springframework.stereotype.Repository
 @Repository
 interface MealRepository : MongoRepository<Meal, ObjectId> {
 
-    fun findByName(name: String?): List<Meal>?
+    @Query("{ 'name' : { \$regex: ?0, \$options: 'i' } }")
+    fun searchByName(name: String?): List<Meal>?
 
     fun findById(id: ObjectId?): Meal?
 

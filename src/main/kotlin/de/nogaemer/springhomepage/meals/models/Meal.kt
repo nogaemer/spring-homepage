@@ -21,6 +21,7 @@ data class Meal(
     val instructions: List<String>,
     val tags: List<String>,
     val imageUrls: List<String>,
+    val imageSrcSet: List<String>,
     val difficulty: String,
     val time: Long,
     val portions: Int,
@@ -30,7 +31,7 @@ data class Meal(
 ){
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)
-    private var id: ObjectId? = null
+    var id: ObjectId? = null
 
     @DocumentReference
     var ratings: List<Rating> = emptyList()

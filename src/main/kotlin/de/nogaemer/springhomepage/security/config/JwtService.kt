@@ -83,7 +83,7 @@ class JwtService {
         return (username == userDetails.username) && !isTokenExpired(token)
     }
 
-    private fun isTokenExpired(token: String?): Boolean {
+    fun isTokenExpired(token: String?): Boolean {
         return extractExpiration(token).before(Date())
     }
 

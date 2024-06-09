@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse
 import lombok.RequiredArgsConstructor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.userdetails.UserDetails
@@ -72,7 +73,6 @@ class AuthenticationService {
             .orElseThrow()
         val jwtToken = jwtService!!.generateToken(user as UserDetails)
         val refreshToken = jwtService.generateRefreshToken(user as UserDetails)
-        revokeAllUserTokens(user)
         saveUserToken(user, jwtToken)
         return AuthenticationResponse(
             jwtToken,
@@ -80,7 +80,7 @@ class AuthenticationService {
         )
     }
 
-    private fun saveUserToken(user: User, jwtToken: String) {
+    private fun saveUserToken(user: User, jwtToken: String): Token {
         val token = Token(
             token = jwtToken,
             tokenType = TokenType.BEARER,
@@ -88,7 +88,7 @@ class AuthenticationService {
             expired = false,
             user = user
         )
-        tokenRepository!!.save(token)
+        return tokenRepository!!.save(token)
     }
 
     private fun revokeAllUserTokens(user: User) {
@@ -115,19 +115,32 @@ class AuthenticationService {
             return
         }
         val refreshToken = authHeader.substring(7)
+        tokenRepository!!.findByToken(refreshToken)?: throw NotFoundException("Token not found")
+
         userLogin = jwtService!!.extractUsername(refreshToken)
         val user = repository!!.findByLogin(userLogin)
             .orElseThrow { NotFoundException("User not found") }
         if (jwtService.isTokenValid(refreshToken, user)) {
-            val accessToken = jwtService.generateToken(user)
-            revokeAllUserTokens(user)
-            saveUserToken(user, accessToken)
+            // Invalidate and remove the old access token
+            val oldAccessToken = tokenRepository!!.findTokenByUserAndToken(user, refreshToken)
+            oldAccessToken?.let {
+                it.revoked = true
+                tokenRepository.save(it)
+            }
+            // Generate a new access token
+            val newAccessToken = saveUserToken(user, jwtService.generateToken(user))
             val authResponse = AuthenticationResponse(
-                accessToken,
+                newAccessToken.token,
                 refreshToken
             )
             response.contentType = "application/json"
             ObjectMapper().writeValue(response.outputStream, authResponse)
         }
+    }
+
+    @Scheduled(fixedRate = 3600000) // runs every hour
+    fun removeExpiredTokens() {
+        val expiredTokens = tokenRepository!!.findAll().filter { jwtService!!.isTokenExpired(it.token) }
+        tokenRepository.deleteAll(expiredTokens)
     }
 }

@@ -25,7 +25,8 @@ internal class Chefkoch {
             ingredients = getIngredients(),
             instructions = getInstructions(),
             tags = getTags(),
-            imageUrls = getImageUrls(),
+            imageUrls = getImageUrl(),
+            imageSrcSet = getImageUrls(),
             difficulty = getDifficulty(),
             time = getTime(),
             portions = getPotions(),
@@ -131,20 +132,31 @@ internal class Chefkoch {
         val imageUrls = mutableListOf<String>()
 
         page!!.select(".ds-mb-left > #recipe-image-carousel > .recipe-image-carousel-slide").forEach { image ->
-            var imageUrl = image.select("a > amp-img").attr("srcset")
-                .split(",").last()
+            val imageUrl = image.select("a > amp-img").attr("srcset")
 
             if (imageUrl.isEmpty()) {
-                imageUrl = image.select("a > amp-img").attr("src")
-
-                if (imageUrl.isEmpty()) {
-                    return@forEach
-                }
+                return@forEach
             }
 
             if (!imageUrls.contains(imageUrl)) {
                 imageUrls.add(imageUrl)
             }
+        }
+
+        return imageUrls
+    }
+
+    private fun getImageUrl(): List<String> {
+        val imageUrls = mutableListOf<String>()
+
+        page!!.select(".ds-mb-left > #recipe-image-carousel > .recipe-image-carousel-slide").forEach { image ->
+            val imageUrl = image.select("a > amp-img").attr("src")
+
+            if (imageUrl.isEmpty() || imageUrls.contains(imageUrl)) {
+                return@forEach
+            }
+
+            imageUrls.add(imageUrl)
         }
 
         return imageUrls

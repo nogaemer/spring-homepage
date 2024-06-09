@@ -18,9 +18,12 @@ class MealController {
 
     @GetMapping
     fun getMealsByName(
-        @RequestParam name: String?
+        @RequestParam(
+            value = "name",
+            defaultValue = ""
+        ) name: String
     ): ResponseEntity<List<Meal>> {
-        return ResponseEntity<List<Meal>>(service?.findByName(name), HttpStatus.OK)
+        return ResponseEntity<List<Meal>>(service?.searchByName(name), HttpStatus.OK)
     }
 
     @GetMapping("/{id}")
@@ -41,7 +44,34 @@ class MealController {
         return ResponseEntity<Meal>(service!!.create(meal), HttpStatus.CREATED)
     }
 
-    @PostMapping("/custom")
+    @DeleteMapping("/{id}")
+    fun deleteMeal(
+        @PathVariable id: ObjectId?
+    ): ResponseEntity<Void> {
+        id ?: throw IllegalArgumentException("Id is null")
+
+        service!!.deleteById(id)
+        return ResponseEntity(HttpStatus.NO_CONTENT)
+    }
+}
+
+@RestController
+@RequestMapping("/api/v1/import")
+class MealImportController {
+    @Autowired
+    private val service: MealService? = null
+
+    @GetMapping("/meal")
+    fun getMeal(
+        @RequestParam(value = "importTag", defaultValue = "chefkoch") importTag: String,
+        @RequestBody import: MealImportUrl
+    ): ResponseEntity<Meal> {
+        val tag = MealImportMethod.valueOf(importTag.uppercase())
+
+        return ResponseEntity(service!!.importMeal(tag, import.url, false), HttpStatus.CREATED)
+    }
+
+    @PostMapping("/meal")
     fun createMeal(
         @RequestParam(value = "importTag", defaultValue = "chefkoch") importTag: String,
         @RequestBody import: MealImportUrl

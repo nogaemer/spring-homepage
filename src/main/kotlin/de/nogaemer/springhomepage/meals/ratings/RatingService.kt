@@ -90,4 +90,8 @@ class RatingService {
         )
     }
 
+    fun deleteRatingsByMeal(meal: Meal) {
+        repository!!.deleteAllByMealId(meal.id!!)
+    }
+
 }
