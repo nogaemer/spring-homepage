@@ -3,6 +3,8 @@ package de.nogaemer.springhomepage
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.ApplicationContextInitializer
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.core.env.Environment
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -32,12 +34,14 @@ class SpringHomepageApplication {
 }
 
 fun main(args: Array<String>) {
-    runApplication<SpringHomepageApplication>(*args)
+    runApplication<SpringHomepageApplication>(*args){
+        addInitializers(EnvironmentVariablesLogger())
+    }
 }
 
-@Component
-class EnvironmentVariablesLogger(private val environment: Environment) : CommandLineRunner {
-    override fun run(vararg args: String?) {
+class EnvironmentVariablesLogger : ApplicationContextInitializer<ConfigurableApplicationContext> {
+    override fun initialize(applicationContext: ConfigurableApplicationContext) {
+        val environment: Environment = applicationContext.environment
         val mongoDatabase = environment.getProperty("env.MONGO_DATABASE")
         val mongoUser = environment.getProperty("env.MONGO_USER")
         val mongoPassword = environment.getProperty("env.MONGO_PASSWORD")
