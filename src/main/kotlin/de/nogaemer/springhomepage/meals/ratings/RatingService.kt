@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.meals.ratings
 
+import BaseService
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.MealRepository
@@ -15,57 +16,44 @@ import org.springframework.stereotype.Service
 
 
 @Service
-class RatingService {
+class RatingService(
+    val repository: RatingRepository,
+    val mealRepository: MealRepository,
+    val mongoTemplate: MongoTemplate,
+): BaseService<Rating, ObjectId>(repository, mealRepository, mongoTemplate) {
 
-    @Autowired
-    private val repository: RatingRepository? = null
-
-    @Autowired
-    private val mealRepository: MealRepository? = null
-
-    @Autowired
-    private val mongoTemplate: MongoTemplate? = null
-
-    fun findAll(): List<Rating> {
-        return repository!!.findAll()
+    override fun findByUserId(userId: ObjectId): Rating? {
+        return repository.findByUserId(userId)
     }
 
-    fun create(response: Rating): Rating {
-        val meal = mealRepository!!.findById(response.mealId)
+    override fun getEntityFieldName(): String {
+        return "ratings"
+    }
+
+    fun findAll(): List<Rating> {
+        return repository.findAll()
+    }
+
+    override fun create(response: Rating): Rating {
+        val rating = super.create(response)
+
+        val meal = mealRepository.findById(response.mealId)
             .orElseThrow { throw IdNotFoundException("Meal not found") }
-
-        repository!!.findByUserId(response.userId!!).let {
-            it ?: return@let
-            if (it.mealId == response.mealId) throw AlreadyReported("User already rated this meal", response)
-        }
-
-        val rating = repository.insert(response)
-
-
-        mongoTemplate!!.update(Meal::class.java)
-            .matching(Criteria.where("id").`is`(rating.mealId))
-            .apply(Update().push("ratings").value(rating))
-            .first()
 
         updateRatings(meal, rating)
 
         return rating
     }
 
-    fun delete(id: ObjectId) {
-        val rating = repository!!.findById(id)
-            .orElseThrow { throw IdNotFoundException("Rating not found") }
+    override fun delete(id: ObjectId): Rating {
+        val rating = super.delete(id)
 
-        val meal = mealRepository!!.findById(rating.mealId)
+        val meal = mealRepository.findById(rating.mealId)
             .orElseThrow { throw IdNotFoundException("Meal not found") }
 
-        mongoTemplate!!.update(Meal::class.java)
-            .matching(Criteria.where("id").`is`(rating.mealId))
-            .apply(Update().pull("ratings", rating))
-            .first()
-
-        repository.deleteById(id)
         updateRatings(meal, rating, true)
+
+        return rating
     }
 
     fun updateRatings(meal: Meal, rating: Rating, delete: Boolean = false) {
@@ -83,7 +71,7 @@ class RatingService {
         test = rating.rating
         test = meal.ratings.size - 1
 
-        mongoTemplate!!.updateMulti(
+        mongoTemplate.updateMulti(
             Query.query(Criteria.where("id").`is`(rating.mealId)),
             Update().set("rating", newAverageRating),
             Meal::class.java
@@ -91,7 +79,11 @@ class RatingService {
     }
 
     fun deleteRatingsByMeal(meal: Meal) {
-        repository!!.deleteAllByMealId(meal.id!!)
+        repository.deleteAllByMealId(meal.id!!)
+    }
+
+    fun findByMealId(objectId: ObjectId): List<Rating> {
+        return repository.findByMealId(objectId)
     }
 
 }

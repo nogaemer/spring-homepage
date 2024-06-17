@@ -1,7 +1,11 @@
 package de.nogaemer.springhomepage.meals.models
 
+import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.databind.JsonSerializer
+import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
+import de.nogaemer.springhomepage.meals.notes.Note
 import de.nogaemer.springhomepage.meals.ratings.Rating
 import lombok.AllArgsConstructor
 import lombok.Data
@@ -27,6 +31,7 @@ data class Meal(
     val portions: Int,
     val calories: Int,
     val url: String = "",
+    @JsonSerialize(using = DoubleSerializer::class)
     var rating: Double = 0.0
 ){
     @Id
@@ -36,10 +41,19 @@ data class Meal(
     @DocumentReference
     var ratings: List<Rating> = emptyList()
 
+    @DocumentReference
+    var notes: List<Note> = emptyList()
+
     fun calculateRating(): Double {
         ratings.map { println(it.rating) }
         if (ratings.isEmpty()) return 0.0
         return ratings.map { it.rating }.average()
+    }
+}
+
+class DoubleSerializer : JsonSerializer<Double>() {
+    override fun serialize(value: Double, gen: JsonGenerator, serializers: SerializerProvider) {
+        gen.writeRawValue(String.format("%.1f", value))
     }
 }
 

@@ -1,8 +1,5 @@
-package de.nogaemer.springhomepage.meals.ratings
+package de.nogaemer.springhomepage.meals.notes
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
-import de.nogaemer.springhomepage.meals.notes.Note
 import de.nogaemer.springhomepage.security.config.JwtService
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
@@ -13,38 +10,33 @@ import org.springframework.web.bind.annotation.*
 
 
 @RestController
-@RequestMapping("/api/v1/ratings")
-class RatingController(
-    val service: RatingService,
-    val jwtService: JwtService
+@RequestMapping("/api/v1/notes")
+class NotesController(
+    val jwtService: JwtService,
+    val service: NoteService
 ) {
-
-    @GetMapping
-    fun getRatings(): List<Rating> {
-        return service.findAll()
-    }
 
     @GetMapping("/{id}")
     fun getNote(
         @PathVariable id: String
-    ): ResponseEntity<List<Rating>> {
+    ): ResponseEntity<List<Note>> {
         return ResponseEntity.ok(service.findByMealId(ObjectId(id)))
     }
 
     @PostMapping
-    fun createRating(
-        @RequestBody rating: Rating,
+    fun createNote(
+        @RequestBody note: Note,
         request: HttpServletRequest
-    ): ResponseEntity<Rating> {
+    ): ResponseEntity<Note> {
         val user = jwtService.extractUserFromRequest(request)
-            ?: throw RuntimeException("User not found")
+            ?: throw RuntimeException("Note found")
 
-        rating.userId = user.id!!
-        return ResponseEntity<Rating>(service.create(rating), HttpStatus.CREATED)
+        note.userId = user.id!!
+        return ResponseEntity<Note>(service.create(note), HttpStatus.CREATED)
     }
 
     @DeleteMapping("/{id}")
-    fun deleteRating(
+    fun deleteNote(
         @PathVariable id: String
     ): ResponseEntity<*> {
         service.delete(ObjectId(id))

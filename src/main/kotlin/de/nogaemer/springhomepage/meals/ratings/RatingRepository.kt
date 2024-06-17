@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.meals.ratings
 
+import de.nogaemer.springhomepage.meals.notes.Note
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.repository.MongoRepository
 import org.springframework.data.mongodb.repository.Query
@@ -11,4 +12,6 @@ interface RatingRepository: MongoRepository<Rating, ObjectId> {
     fun findByUserId(userId: ObjectId): Rating?
 
     fun deleteAllByMealId(mealId: ObjectId)
+
+    fun findByMealId(mealId: ObjectId):List<Rating>
 }

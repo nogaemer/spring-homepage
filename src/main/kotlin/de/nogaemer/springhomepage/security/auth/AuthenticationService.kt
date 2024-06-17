@@ -82,6 +82,17 @@ class AuthenticationService {
     }
 
     private fun saveUserToken(user: User, jwtToken: String): Token {
+        var newJwtToken = jwtToken;
+
+        // Check if a token with the same value already exists
+        var existingToken = tokenRepository!!.findByToken(jwtToken)
+        while (existingToken != null) {
+            // Token with the same value already exists, regenerate the token
+            newJwtToken = jwtService!!.generateToken(user)
+            existingToken = tokenRepository.findByToken(newJwtToken)
+        }
+
+        // Save the new token
         val token = Token(
             token = jwtToken,
             tokenType = TokenType.BEARER,
@@ -89,7 +100,7 @@ class AuthenticationService {
             expired = false,
             user = user
         )
-        return tokenRepository!!.save(token)
+        return tokenRepository.save(token)
     }
 
     private fun revokeAllUserTokens(user: User) {
@@ -146,9 +157,9 @@ class AuthenticationService {
         val expiredTokens = allTokens.filter {
             try {
                 jwtService!!.isTokenExpired(it.token)
+                it.expired
             } catch (e: AuthorisationRequired) {
-                println("Failed to parse token: ${it.token}")
-                false
+                true
             }
         }
         tokenRepository.deleteAll(expiredTokens)

@@ -1,4 +1,4 @@
-package de.nogaemer.springhomepage.meals.ratings
+package de.nogaemer.springhomepage.meals.notes
 
 import EntityWithMealId
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
@@ -10,14 +10,14 @@ import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 
-
-@Document(collection = "ratings")
+@Document(collection = "notes")
 @Data
-@NoArgsConstructor @AllArgsConstructor
-data class Rating(
+@NoArgsConstructor
+@AllArgsConstructor
+data class Note(
     @field:JsonSerialize(using = ToStringSerializer::class)
     override val mealId: ObjectId,
-    val rating: Int
+    val note: String
 ): EntityWithMealId{
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)

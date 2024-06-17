@@ -2,6 +2,7 @@ package de.nogaemer.springhomepage.security.config
 
 import de.nogaemer.springhomepage.exceptions.AuthorisationRequired
 import de.nogaemer.springhomepage.exceptions.NotFoundException
+import de.nogaemer.springhomepage.security.token.TokenRepository
 import de.nogaemer.springhomepage.user.User
 import de.nogaemer.springhomepage.user.UserRepository
 import io.jsonwebtoken.Claims
@@ -33,6 +34,9 @@ class JwtService {
 
     @Autowired
     private val userRepository: UserRepository? = null
+
+    @Autowired
+    private val tokenRepository: TokenRepository? = null
 
     fun extractUsername(token: String?): String {
         return extractClaim(token) { obj: Claims -> obj.subject }
@@ -103,6 +107,9 @@ class JwtService {
                 .parseClaimsJws(token)
                 .body
         } catch (e: ExpiredJwtException) {
+            tokenRepository!!.delete(tokenRepository.findByToken(token!!) ?:
+            throw NotFoundException("Token not found"))
+
             throw AuthorisationRequired("Token is expired")
         } catch (e: Exception) {
             println("Failed to parse token: $e")
