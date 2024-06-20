@@ -71,6 +71,11 @@ class MealService {
     }
 
     fun update(id: ObjectId, meal: Meal): Meal {
+        // Check if the meal with the given id exists
+        repository?.findById(id)?.orElseThrow {
+            IdNotFoundException("Meal with id $id not found")
+        }
 
+        return repository?.save(meal) ?: throw Exception("Error updating meal")
     }
 }
