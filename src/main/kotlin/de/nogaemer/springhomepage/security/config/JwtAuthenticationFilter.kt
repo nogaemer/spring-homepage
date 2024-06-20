@@ -7,7 +7,6 @@ import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import lombok.RequiredArgsConstructor
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.lang.NonNull
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -16,18 +15,14 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.io.IOException
-import java.util.function.Function
 
 @Component
 @RequiredArgsConstructor
-class JwtAuthenticationFilter : OncePerRequestFilter() {
-
-    @Autowired
-    private val jwtService: JwtService? = null
-    @Autowired
-    private val userDetailsService: UserDetailsService? = null
-    @Autowired
-    private val tokenRepository: TokenRepository? = null
+class JwtAuthenticationFilter(
+    val jwtService: JwtService,
+    val userDetailsService: UserDetailsService,
+    val tokenRepository: TokenRepository
+) : OncePerRequestFilter() {
 
     @Throws(ServletException::class, IOException::class)
     override fun doFilterInternal(
@@ -46,10 +41,11 @@ class JwtAuthenticationFilter : OncePerRequestFilter() {
             return
         }
         val jwt = authHeader.substring(7)
-        userEmail = jwtService!!.extractUsername(jwt)
+        userEmail = jwtService.extractUsername(jwt)
         if (SecurityContextHolder.getContext().authentication == null) {
-            val userDetails = userDetailsService!!.loadUserByUsername(userEmail)
-            val isTokenValid = tokenRepository!!.findByToken(jwt)
+
+            val userDetails = userDetailsService.loadUserByUsername(userEmail)
+            val isTokenValid = tokenRepository.findByToken(jwt)
                 ?.let { t: Token -> !t.expired && !t.revoked }
                 ?: false
             if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {

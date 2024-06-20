@@ -9,6 +9,7 @@ import de.nogaemer.springhomepage.meals.ratings.RatingService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.util.MultiValueMap
 import kotlin.jvm.optionals.getOrNull
 
 @Service
@@ -67,5 +68,9 @@ class MealService {
         ratingService!!.deleteRatingsByMeal(meal)
 
         repository!!.deleteById(id)
+    }
+
+    fun update(id: ObjectId, meal: Meal): Meal {
+
     }
 }

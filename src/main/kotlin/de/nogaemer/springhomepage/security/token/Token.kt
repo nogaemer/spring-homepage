@@ -16,6 +16,7 @@ import org.springframework.data.mongodb.core.mapping.Document
 @AllArgsConstructor
 @NoArgsConstructor
 data class Token(
+
     val token: String,
     val tokenType: TokenType = TokenType.BEARER,
     var revoked: Boolean,

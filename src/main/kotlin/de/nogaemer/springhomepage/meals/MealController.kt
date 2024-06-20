@@ -36,6 +36,16 @@ class MealController {
         return ResponseEntity.ok(response)
     }
 
+    @PutMapping("/{id}")
+    fun updateMeal(
+        @PathVariable id: ObjectId?,
+        @RequestBody meal: Meal
+    ): ResponseEntity<Meal> {
+        id ?: throw IllegalArgumentException("Id is null")
+
+        return ResponseEntity<Meal>(service!!.update(id, meal), HttpStatus.OK)
+    }
+
     @PostMapping
     fun createMeal(
         @RequestBody meal: Meal
