@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.core.env.Environment
+import org.springframework.data.mongodb.config.EnableMongoAuditing
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.RestController
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 @SpringBootApplication
 @RestController
 @EnableScheduling
+@EnableMongoAuditing
 class SpringHomepageApplication {
 
     @Bean

@@ -5,7 +5,10 @@ import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.import.Chefkoch
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.models.MealImportMethod
+import de.nogaemer.springhomepage.meals.notes.NoteResponse
+import de.nogaemer.springhomepage.meals.ratings.RatingResponse
 import de.nogaemer.springhomepage.meals.ratings.RatingService
+import de.nogaemer.springhomepage.user.UserResponse
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -13,36 +16,34 @@ import org.springframework.util.MultiValueMap
 import kotlin.jvm.optionals.getOrNull
 
 @Service
-class MealService {
-    @Autowired
-    private val repository: MealRepository? = null
-
-    @Autowired
-    private val ratingService: RatingService? = null
+class MealService(
+    val repository: MealRepository,
+    val ratingService: RatingService
+) {
 
     fun findAll(): List<Meal> {
-        return repository!!.findAll()
+        return repository.findAll()
     }
 
     fun searchByName(name: String?): List<Meal>? {
         if (name == "") return findAll()
 
-        return repository!!.searchByName(name)
+        return repository.searchByName(name)
     }
 
     fun findById(id: ObjectId): Meal {
-        return repository!!.findById(id).getOrNull()
+        return repository.findById(id).getOrNull()
             ?: throw IdNotFoundException("Meal with id $id not found")
     }
 
     fun create(meal: Meal): Meal {
 
-        val existingMeal = repository!!.findByName(meal.name)
+        val existingMeal = repository.findByName(meal.name)
         if (existingMeal != null) {
             throw AlreadyReported("Meal with name ${meal.name} already exists", existingMeal)
         }
 
-        return repository!!.save(meal)
+        return repository.save(meal)
     }
 
     fun importMeal(tag: MealImportMethod, url: String, save:Boolean = true): Meal {
@@ -53,10 +54,10 @@ class MealService {
 
                 if (!save) return meal
 
-                if (repository!!.countByUrl(url) >= 1)
+                if (repository.countByUrl(url) >= 1)
                     throw AlreadyReported("Meal with url $url already exists", meal)
 
-                return repository!!.save(meal)
+                return repository.save(meal)
             }
         }
     }
@@ -65,17 +66,17 @@ class MealService {
         val meal = findById(id)
 
         // Assuming you have a service for handling ratings
-        ratingService!!.deleteRatingsByMeal(meal)
+        ratingService.deleteRatingsByMeal(meal)
 
-        repository!!.deleteById(id)
+        repository.deleteById(id)
     }
 
     fun update(id: ObjectId, meal: Meal): Meal {
-        // Check if the meal with the given id exists
-        repository?.findById(id)?.orElseThrow {
+
+        repository.findById(id).orElseThrow {
             IdNotFoundException("Meal with id $id not found")
         }
 
-        return repository?.save(meal) ?: throw Exception("Error updating meal")
+        return repository.save(meal)
     }
 }

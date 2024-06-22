@@ -2,6 +2,7 @@ import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.MealRepository
 import de.nogaemer.springhomepage.meals.models.Meal
+import de.nogaemer.springhomepage.security.config.JwtService
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
@@ -17,6 +18,8 @@ abstract class BaseService<T: EntityWithMealId, ID: Any>(
     open fun create(response: T): T {
         mealRepository.findById(response.mealId)
             .orElseThrow { throw IdNotFoundException("Meal not found") }
+
+        response.userId
 
         findByUserId(response.userId!!)?.let {
             if (it.mealId == response.mealId)

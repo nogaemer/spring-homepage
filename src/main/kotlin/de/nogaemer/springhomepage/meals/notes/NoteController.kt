@@ -3,7 +3,6 @@ package de.nogaemer.springhomepage.meals.notes
 import de.nogaemer.springhomepage.security.config.JwtService
 import jakarta.servlet.http.HttpServletRequest
 import org.bson.types.ObjectId
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -11,7 +10,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/notes")
-class NotesController(
+class NoteController(
     val jwtService: JwtService,
     val service: NoteService
 ) {
@@ -19,8 +18,8 @@ class NotesController(
     @GetMapping("/{id}")
     fun getNote(
         @PathVariable id: String
-    ): ResponseEntity<List<Note>> {
-        return ResponseEntity.ok(service.findByMealId(ObjectId(id)))
+    ): ResponseEntity<List<NoteResponse>> {
+        return ResponseEntity.ok(service.getNotesByMealId(ObjectId(id)))
     }
 
     @PostMapping
@@ -29,7 +28,7 @@ class NotesController(
         request: HttpServletRequest
     ): ResponseEntity<Note> {
         val user = jwtService.extractUserFromRequest(request)
-            ?: throw RuntimeException("Note found")
+            ?: throw RuntimeException("Note not found")
 
         note.userId = user.id!!
         return ResponseEntity<Note>(service.create(note), HttpStatus.CREATED)

@@ -10,4 +10,6 @@ import java.util.*
 interface UserRepository : MongoRepository<User, ObjectId> {
 
     fun findByLogin(login: String?): Optional<User>
+
+    fun findById(id: ObjectId?): User?
 }

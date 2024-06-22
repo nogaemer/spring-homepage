@@ -5,6 +5,8 @@ import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.MealRepository
 import de.nogaemer.springhomepage.meals.models.Meal
+import de.nogaemer.springhomepage.user.UserRepository
+import de.nogaemer.springhomepage.user.UserResponse
 import okhttp3.internal.wait
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service
 class RatingService(
     val repository: RatingRepository,
     val mealRepository: MealRepository,
+    val userRepository: UserRepository,
     val mongoTemplate: MongoTemplate,
 ): BaseService<Rating, ObjectId>(repository, mealRepository, mongoTemplate) {
 
@@ -32,6 +35,27 @@ class RatingService(
 
     fun findAll(): List<Rating> {
         return repository.findAll()
+    }
+
+    fun getRatingsByMealId(mealId: ObjectId): List<RatingResponse> {
+        val ratings = mutableListOf<RatingResponse>()
+
+        repository.findByMealId(mealId).forEach {
+            val user = userRepository.findById(it.userId)?:
+                throw IdNotFoundException("User not found")
+
+            ratings.add(
+                RatingResponse(
+                    it,
+                    UserResponse(
+                        user.id!!,
+                        user.login,
+                        user.name,
+                        user.role
+                    )
+                ))
+        }
+        return ratings
     }
 
     override fun create(response: Rating): Rating {

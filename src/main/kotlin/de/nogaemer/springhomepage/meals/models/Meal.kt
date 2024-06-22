@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor
 import org.bson.types.ObjectId
+import org.jetbrains.annotations.NotNull
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.core.mapping.DocumentReference
@@ -20,17 +21,31 @@ import org.springframework.data.mongodb.core.mapping.DocumentReference
 @AllArgsConstructor
 @NoArgsConstructor
 data class Meal(
+    @NotNull
     val name: String,
+
     val ingredients: List<Ingredient>,
+
     val instructions: List<String>,
+
+    @NotNull
     val tags: List<String>,
+
     val imageSrc: List<String>,
+
     val imageSrcSet: List<String>,
+
+    @NotNull
     val difficulty: String,
+
     val time: Long,
+
     val portions: Int,
+
     val calories: Int,
+
     val url: String = "",
+
     @JsonSerialize(using = DoubleSerializer::class)
     var rating: Double = 0.0
 ){

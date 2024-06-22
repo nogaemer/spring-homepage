@@ -3,6 +3,7 @@ package de.nogaemer.springhomepage.security.config
 import de.nogaemer.springhomepage.security.auditing.ApplicationAuditAware
 import de.nogaemer.springhomepage.user.UserRepository
 import lombok.RequiredArgsConstructor
+import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -40,7 +41,7 @@ class ApplicationConfig {
     }
 
     @Bean
-    fun auditorAware(): AuditorAware<Int> {
+    fun auditorAware(): AuditorAware<ObjectId> {
         return ApplicationAuditAware()
     }
 

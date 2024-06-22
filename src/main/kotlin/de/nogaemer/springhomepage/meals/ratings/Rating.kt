@@ -7,8 +7,13 @@ import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor
 import org.bson.types.ObjectId
+import org.jetbrains.annotations.NotNull
+import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.LastModifiedBy
+import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.data.mongodb.core.mapping.Document
+import java.time.LocalDateTime
 
 
 @Document(collection = "ratings")
@@ -17,12 +22,21 @@ import org.springframework.data.mongodb.core.mapping.Document
 data class Rating(
     @field:JsonSerialize(using = ToStringSerializer::class)
     override val mealId: ObjectId,
-    val rating: Int
+
+    @NotNull
+    val rating: Int,
+
+    @CreatedDate
+    var date: LocalDateTime? = null,
+
+    @LastModifiedDate
+    var modifiedDate: LocalDateTime? = null
 ): EntityWithMealId{
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)
     private var id: ObjectId? = null
 
+    @LastModifiedBy
     @field:JsonSerialize(using = ToStringSerializer::class)
     override var userId: ObjectId? = null
 }
