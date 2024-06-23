@@ -57,7 +57,8 @@ class AuthenticationService {
         saveUserToken(savedUser, jwtToken)
         return AuthenticationResponse(
             jwtToken,
-            refreshToken
+            refreshToken,
+            savedUser.id
         )
     }
 
@@ -77,7 +78,8 @@ class AuthenticationService {
         saveUserToken(user, jwtToken)
         return AuthenticationResponse(
             jwtToken,
-            refreshToken
+            refreshToken,
+            user.id
         )
     }
 
@@ -144,7 +146,8 @@ class AuthenticationService {
             val newAccessToken = saveUserToken(user, jwtService.generateToken(user))
             val authResponse = AuthenticationResponse(
                 newAccessToken.token,
-                refreshToken
+                refreshToken,
+                user.id
             )
             response.contentType = "application/json"
             ObjectMapper().writeValue(response.outputStream, authResponse)

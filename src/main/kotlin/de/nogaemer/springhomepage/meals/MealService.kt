@@ -67,15 +67,18 @@ class MealService(
 
         // Assuming you have a service for handling ratings
         ratingService.deleteRatingsByMeal(meal)
-
         repository.deleteById(id)
     }
 
     fun update(id: ObjectId, meal: Meal): Meal {
 
-        repository.findById(id).orElseThrow {
+        val originalMeal = repository.findById(id).orElseThrow {
             IdNotFoundException("Meal with id $id not found")
         }
+
+        meal.rating = originalMeal.rating
+        meal.ratings = originalMeal.ratings
+        meal.notes = originalMeal.notes
 
         return repository.save(meal)
     }

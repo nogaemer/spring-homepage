@@ -3,6 +3,7 @@ package de.nogaemer.springhomepage.meals.ratings
 import BaseService
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
+import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.meals.MealRepository
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.user.UserRepository
@@ -108,6 +109,16 @@ class RatingService(
 
     fun findByMealId(objectId: ObjectId): List<Rating> {
         return repository.findByMealId(objectId)
+    }
+
+    fun update(id: ObjectId, rating: Rating): Rating? {
+         val originalRating = repository.findById(id).orElseThrow {
+             IdNotFoundException("Meal with id $id not found")
+         }
+
+        originalRating.rating = rating.rating
+
+        return repository.save(originalRating)
     }
 
 }

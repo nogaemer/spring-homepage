@@ -43,6 +43,14 @@ class RatingController(
         return ResponseEntity<Rating>(service.create(rating), HttpStatus.CREATED)
     }
 
+    @PutMapping("/{id}")
+    fun updateRating(
+        @PathVariable id: String,
+        @RequestBody rating: Rating
+    ): ResponseEntity<Rating> {
+        return ResponseEntity.ok(service.update(ObjectId(id), rating))
+    }
+
     @DeleteMapping("/{id}")
     fun deleteRating(
         @PathVariable id: String

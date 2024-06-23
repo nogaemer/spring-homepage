@@ -24,7 +24,7 @@ data class Rating(
     override val mealId: ObjectId,
 
     @NotNull
-    val rating: Int,
+    var rating: Int,
 
     @CreatedDate
     var date: LocalDateTime? = null,
