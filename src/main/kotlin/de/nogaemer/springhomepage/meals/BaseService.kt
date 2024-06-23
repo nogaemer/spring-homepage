@@ -16,12 +16,12 @@ abstract class BaseService<T: EntityWithMealId, ID: Any>(
 ) {
 
     open fun create(response: T): T {
-        mealRepository.findById(response.mealId)
+        val meal = mealRepository.findById(response.mealId)
             .orElseThrow { throw IdNotFoundException("Meal not found") }
 
         response.userId
 
-        findByUserId(response.userId!!)?.let {
+        findByUserId(response.userId!!, meal.id!!)?.let {
             if (it.mealId == response.mealId)
                 throw AlreadyReported("User already submitted this type of entity for this meal", response)
         }
@@ -50,7 +50,7 @@ abstract class BaseService<T: EntityWithMealId, ID: Any>(
         return entity
     }
 
-    abstract fun findByUserId(userId: ObjectId): T?
+    abstract fun findByUserId(userId: ObjectId, mealId: ObjectId): T?
     abstract fun getEntityFieldName(): String
 }
 
