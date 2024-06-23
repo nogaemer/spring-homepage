@@ -19,8 +19,8 @@ class NoteService(
     mongoTemplate: MongoTemplate,
 ) : BaseService<Note, ObjectId>(repository, mealRepository, mongoTemplate) {
 
-    override fun findByUserId(userId: ObjectId): Note? {
-        return repository.findByUserId(userId)
+    override fun findByUserId(userId: ObjectId, mealId: ObjectId): Note? {
+        return repository.findByUserIdAndMealId(userId, mealId)
     }
 
     override fun getEntityFieldName(): String {

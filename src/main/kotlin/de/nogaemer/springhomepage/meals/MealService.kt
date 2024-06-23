@@ -5,14 +5,9 @@ import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.import.Chefkoch
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.models.MealImportMethod
-import de.nogaemer.springhomepage.meals.notes.NoteResponse
-import de.nogaemer.springhomepage.meals.ratings.RatingResponse
 import de.nogaemer.springhomepage.meals.ratings.RatingService
-import de.nogaemer.springhomepage.user.UserResponse
 import org.bson.types.ObjectId
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
-import org.springframework.util.MultiValueMap
 import kotlin.jvm.optionals.getOrNull
 
 @Service
@@ -46,7 +41,7 @@ class MealService(
         return repository.save(meal)
     }
 
-    fun importMeal(tag: MealImportMethod, url: String, save:Boolean = true): Meal {
+    fun importMeal(tag: MealImportMethod, url: String, save: Boolean = true): Meal {
         when (tag) {
             MealImportMethod.CHEFKOCH -> {
                 if (!url.contains("chefkoch.de")) throw IllegalArgumentException("Url is not from Chefkoch")

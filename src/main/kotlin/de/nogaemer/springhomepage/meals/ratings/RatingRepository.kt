@@ -10,7 +10,7 @@ import java.util.*
 @Repository
 interface RatingRepository: MongoRepository<Rating, ObjectId> {
 
-    fun findByUserId(userId: ObjectId): Rating?
+    fun findByUserIdAndMealId(userId: ObjectId, mealId: ObjectId): Rating?
 
     fun deleteAllByMealId(mealId: ObjectId)
 

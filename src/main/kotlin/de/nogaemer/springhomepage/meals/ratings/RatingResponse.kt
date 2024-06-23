@@ -10,4 +10,5 @@ import org.bson.types.ObjectId
 data class RatingResponse(
     val rating: Rating,
     val user: UserResponse,
+    val mealRating: Double,
 )

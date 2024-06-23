@@ -24,8 +24,8 @@ class RatingService(
     val mongoTemplate: MongoTemplate,
 ) : BaseService<Rating, ObjectId>(repository, mealRepository, mongoTemplate) {
 
-    override fun findByUserId(userId: ObjectId): Rating? {
-        return repository.findByUserId(userId)
+    override fun findByUserId(userId: ObjectId, mealId: ObjectId): Rating? {
+        return repository.findByUserIdAndMealId(userId, mealId)
     }
 
     override fun getEntityFieldName(): String {
@@ -50,7 +50,8 @@ class RatingService(
                         user.login,
                         user.name,
                         user.role
-                    )
+                    ),
+                    mealRepository.findById(it.mealId).orElseThrow { NotFoundException("Meal not found") }.rating
                 )
             )
         }

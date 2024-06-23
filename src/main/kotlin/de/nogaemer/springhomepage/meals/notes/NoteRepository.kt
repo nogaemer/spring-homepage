@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository
 @Repository
 interface NoteRepository: MongoRepository<Note, ObjectId> {
 
-    fun findByUserId(userId: ObjectId): Note?
+    fun findByUserIdAndMealId(userId: ObjectId, mealId: ObjectId): Note?
 
     fun deleteAllByMealId(mealId: ObjectId)
 
