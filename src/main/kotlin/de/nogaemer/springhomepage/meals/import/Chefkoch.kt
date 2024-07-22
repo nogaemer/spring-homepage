@@ -2,19 +2,26 @@ package de.nogaemer.springhomepage.meals.import
 
 import de.nogaemer.springhomepage.meals.models.Ingredient
 import de.nogaemer.springhomepage.meals.models.Meal
+import de.nogaemer.springhomepage.meals.tags.Tag
+import de.nogaemer.springhomepage.meals.tags.TagService
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Component
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 
-
-internal class Chefkoch {
+@Component
+class Chefkoch {
     private var page: Document? = null
     private var jsonData: JSONObject? = null
+
+    @Autowired
+    private val tagService: TagService? = null
 
 
     fun getMealFromUrl(url: String): Meal {
@@ -74,16 +81,18 @@ internal class Chefkoch {
 
             var name = ""
             var unit = ""
-            var amount =""
+            var amount = ""
 
             when {
                 ingredient.trimStart() != ingredient -> {
                     name = ingredient.trimStart()
                 }
+
                 ingredient.count { it == ' ' } == 1 -> {
                     name = ingredient.split(" ", limit = 2)[1]
                     amount = ingredient.split(" ")[0]
                 }
+
                 ingredient.count { it == ' ' } >= 2 -> {
                     name = ingredient.split(" ", limit = 3)[2]
                     unit = ingredient.split(" ")[1]
@@ -116,12 +125,19 @@ internal class Chefkoch {
         return instructions
     }
 
-    private fun getTags(): List<String> {
-        val tags = mutableListOf<String>()
+    private fun getTags(): MutableList<Tag> {
+        val tags = mutableListOf<Tag>()
 
         jsonData!!.getJSONArray("keywords").forEach { tag ->
             tag as String
-            tags.add(tag)
+            tags.add(
+                tagService!!.saveTag(
+                    Tag(
+                        id = tag.lowercase().trimStart(),
+                        name = tag.trimStart()
+                    )
+                )
+            )
         }
 
         return tags
@@ -163,9 +179,9 @@ internal class Chefkoch {
 
     private fun getDifficulty(): String {
         return page!!.select(".recipe-difficulty")
-                .textNodes()[0]
-                .toString()
-                .trim()
+            .textNodes()[0]
+            .toString()
+            .trim()
     }
 
     private fun getTime(): Long {

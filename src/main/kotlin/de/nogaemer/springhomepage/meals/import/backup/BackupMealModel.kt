@@ -1,13 +1,14 @@
-package de.nogaemer.springhomepage.meals.models
+package de.nogaemer.springhomepage.meals.import.backup
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
+import de.nogaemer.springhomepage.meals.models.DoubleSerializer
+import de.nogaemer.springhomepage.meals.models.Ingredient
 import de.nogaemer.springhomepage.meals.notes.Note
 import de.nogaemer.springhomepage.meals.ratings.Rating
-import de.nogaemer.springhomepage.meals.tags.Tag
 import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor
@@ -21,7 +22,7 @@ import org.springframework.data.mongodb.core.mapping.DocumentReference
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-data class Meal(
+data class BackupMealModel(
     @NotNull
     val name: String,
 
@@ -45,8 +46,7 @@ data class Meal(
     val url: String = "",
 
     @NotNull
-    @DocumentReference
-    var tags: MutableList<Tag> = mutableListOf(),
+    var tags: List<String> = emptyList(),
 
     @JsonSerialize(using = DoubleSerializer::class)
     var rating: Double = 0.0
@@ -65,12 +65,6 @@ data class Meal(
         ratings.map { println(it.rating) }
         if (ratings.isEmpty()) return 0.0
         return ratings.map { it.rating }.average()
-    }
-}
-
-class DoubleSerializer : JsonSerializer<Double>() {
-    override fun serialize(value: Double, gen: JsonGenerator, serializers: SerializerProvider) {
-        gen.writeRawValue(String.format("%.1f", value))
     }
 }
 

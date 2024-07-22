@@ -1,6 +1,6 @@
 package de.nogaemer.springhomepage.meals.notes
 
-import BaseService
+import de.nogaemer.springhomepage.meals.BaseService
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.MealRepository
 import de.nogaemer.springhomepage.meals.models.Meal

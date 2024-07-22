@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.meals
 
+import de.nogaemer.springhomepage.meals.dto.MealDto
 import de.nogaemer.springhomepage.meals.import.MealImportUrl
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.models.MealImportMethod
@@ -39,7 +40,7 @@ class MealController {
     @PutMapping("/{id}")
     fun updateMeal(
         @PathVariable id: ObjectId?,
-        @RequestBody meal: Meal
+        @RequestBody meal: MealDto
     ): ResponseEntity<Meal> {
         id ?: throw IllegalArgumentException("Id is null")
 
@@ -48,9 +49,8 @@ class MealController {
 
     @PostMapping
     fun createMeal(
-        @RequestBody meal: Meal
+        @RequestBody meal: MealDto
     ): ResponseEntity<Meal> {
-        println(meal)
         return ResponseEntity<Meal>(service!!.create(meal), HttpStatus.CREATED)
     }
 
@@ -76,7 +76,7 @@ class MealImportController {
         @RequestParam(value = "importTag", defaultValue = "chefkoch") importTag: String,
         @RequestParam(value = "url") url: String?,
     ): ResponseEntity<Meal> {
-        url?: throw IllegalArgumentException("Url is null")
+        url ?: throw IllegalArgumentException("Url is null")
 
         val tag = MealImportMethod.valueOf(importTag.uppercase())
 

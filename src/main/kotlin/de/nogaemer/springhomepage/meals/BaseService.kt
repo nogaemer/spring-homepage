@@ -1,15 +1,15 @@
+package de.nogaemer.springhomepage.meals
+
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
-import de.nogaemer.springhomepage.meals.MealRepository
 import de.nogaemer.springhomepage.meals.models.Meal
-import de.nogaemer.springhomepage.security.config.JwtService
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.repository.MongoRepository
 
-abstract class BaseService<T: EntityWithMealId, ID: Any>(
+abstract class BaseService<T : EntityWithMealId, ID : Any>(
     private val repository: MongoRepository<T, ID>,
     private val mealRepository: MealRepository,
     private val mongoTemplate: MongoTemplate
@@ -18,8 +18,6 @@ abstract class BaseService<T: EntityWithMealId, ID: Any>(
     open fun create(response: T): T {
         val meal = mealRepository.findById(response.mealId)
             .orElseThrow { throw IdNotFoundException("Meal not found") }
-
-        response.userId
 
         findByUserId(response.userId!!, meal.id!!)?.let {
             if (it.mealId == response.mealId)

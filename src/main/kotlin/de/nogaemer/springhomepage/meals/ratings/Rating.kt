@@ -1,6 +1,6 @@
 package de.nogaemer.springhomepage.meals.ratings
 
-import EntityWithMealId
+import de.nogaemer.springhomepage.meals.EntityWithMealId
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
 import lombok.AllArgsConstructor
@@ -21,7 +21,7 @@ import java.time.LocalDateTime
 @NoArgsConstructor @AllArgsConstructor
 data class Rating(
     @field:JsonSerialize(using = ToStringSerializer::class)
-    override val mealId: ObjectId,
+    override var mealId: ObjectId,
 
     @NotNull
     var rating: Int,
@@ -31,7 +31,7 @@ data class Rating(
 
     @LastModifiedDate
     var modifiedDate: LocalDateTime? = null
-): EntityWithMealId{
+): EntityWithMealId {
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)
     private var id: ObjectId? = null

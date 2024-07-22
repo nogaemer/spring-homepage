@@ -2,18 +2,22 @@ package de.nogaemer.springhomepage.meals
 
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
+import de.nogaemer.springhomepage.meals.dto.MealDto
 import de.nogaemer.springhomepage.meals.import.Chefkoch
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.models.MealImportMethod
 import de.nogaemer.springhomepage.meals.ratings.RatingService
+import de.nogaemer.springhomepage.meals.tags.Tag
 import org.bson.types.ObjectId
 import org.springframework.stereotype.Service
+import de.nogaemer.springhomepage.meals.tags.TagService
 import kotlin.jvm.optionals.getOrNull
 
 @Service
 class MealService(
     val repository: MealRepository,
-    val ratingService: RatingService
+    val ratingService: RatingService,
+    val tagService: TagService
 ) {
 
     fun findAll(): List<Meal> {
@@ -31,11 +35,37 @@ class MealService(
             ?: throw IdNotFoundException("Meal with id $id not found")
     }
 
-    fun create(meal: Meal): Meal {
+    fun create(meal: MealDto): Meal {
 
-        val existingMeal = repository.findByName(meal.name)
-        if (existingMeal != null) {
-            throw AlreadyReported("Meal with name ${meal.name} already exists", existingMeal)
+        repository.findByName(meal.name)?.let {
+            throw AlreadyReported("Meal with name ${meal.name} already exists", meal)
+        }
+
+        val tags = tagService.stringToTags(meal.tags)
+
+        val newMeal = Meal(
+            name = meal.name,
+            ingredients = meal.ingredients,
+            instructions = meal.instructions,
+            imageSrc = meal.imageSrc,
+            imageSrcSet = meal.imageSrcSet,
+            difficulty = meal.difficulty,
+            time = meal.time,
+            portions = meal.portions,
+            calories = meal.calories,
+            tags = mutableListOf()
+        )
+
+        val returnMeal = repository.save(newMeal)
+
+        tagService.addTagsToMeal(tags, returnMeal)
+
+        return returnMeal
+    }
+
+    fun create(meal: Meal): Meal {
+        repository.findByName(meal.name)?.let {
+            throw AlreadyReported("Meal with name ${meal.name} already exists", meal)
         }
 
         return repository.save(meal)
@@ -65,16 +95,33 @@ class MealService(
         repository.deleteById(id)
     }
 
-    fun update(id: ObjectId, meal: Meal): Meal {
+    fun update(id: ObjectId, meal: MealDto): Meal {
 
         val originalMeal = repository.findById(id).orElseThrow {
             IdNotFoundException("Meal with id $id not found")
         }
 
-        meal.rating = originalMeal.rating
-        meal.ratings = originalMeal.ratings
-        meal.notes = originalMeal.notes
+        val tags = tagService.updateMealTags(originalMeal, meal.tags)
 
-        return repository.save(meal)
+        val updatedMeal = originalMeal.copy(
+            name = meal.name,
+            ingredients = meal.ingredients,
+            instructions = meal.instructions,
+            imageSrc = meal.imageSrc,
+            imageSrcSet = meal.imageSrcSet,
+            difficulty = meal.difficulty,
+            time = meal.time,
+            portions = meal.portions,
+            calories = meal.calories,
+            tags = tags,
+            url = originalMeal.url,
+            rating = originalMeal.rating
+        ).apply {
+            this.id = originalMeal.id
+            this.ratings = originalMeal.ratings
+            this.notes = originalMeal.notes
+        }
+
+        return repository.save(updatedMeal)
     }
 }

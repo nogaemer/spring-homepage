@@ -24,6 +24,13 @@ class ApiExceptionHandler {
             else -> HttpStatus.INTERNAL_SERVER_ERROR
         }
 
+        val cause = exception.message ?: "An error occurred"
+        val stacktrace = exception.stackTraceToString()
+
+        println(formatter.errorInverted(exception.javaClass.simpleName))
+        println(formatter.subErrorInverted("Exception") + cause)
+        println(formatter.subErrorInverted("Stacktrace") + stacktrace + "\n")
+
 
         exception.stackTrace = arrayOf()
         val errorInfo = ErrorInfo(
