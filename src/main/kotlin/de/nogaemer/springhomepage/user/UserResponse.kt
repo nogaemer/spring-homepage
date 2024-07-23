@@ -7,7 +7,5 @@ import org.bson.types.ObjectId
 data class UserResponse(
     @field:JsonSerialize(using = ToStringSerializer::class)
     val id: ObjectId,
-    val login: String,
     val name: String,
-    val role: Role,
 )

@@ -43,9 +43,7 @@ class NoteService(
                     it,
                     UserResponse(
                         user.id!!,
-                        user.login,
-                        user.name,
-                        user.role
+                        user.login
                     )
                 ))
         }

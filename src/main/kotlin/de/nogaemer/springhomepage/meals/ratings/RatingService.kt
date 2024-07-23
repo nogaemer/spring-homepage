@@ -47,9 +47,7 @@ class RatingService(
                     it,
                     UserResponse(
                         user.id!!,
-                        user.login,
-                        user.name,
-                        user.role
+                        user.login
                     ),
                     mealRepository.findById(it.mealId).orElseThrow { NotFoundException("Meal not found") }.rating
                 )

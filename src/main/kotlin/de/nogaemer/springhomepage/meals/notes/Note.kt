@@ -32,7 +32,6 @@ data class Note(
     @field:JsonSerialize(using = ToStringSerializer::class)
     private var id: ObjectId? = null
 
-    @LastModifiedBy
     @field:JsonSerialize(using = ToStringSerializer::class)
     override var userId: ObjectId? = null
 }
