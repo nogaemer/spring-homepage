@@ -1,6 +1,5 @@
 package de.nogaemer.springhomepage.user
 
-import lombok.Getter
 import lombok.RequiredArgsConstructor
 
 @RequiredArgsConstructor

@@ -25,22 +25,13 @@ import java.util.function.Consumer
 
 @Service
 @RequiredArgsConstructor
-class AuthenticationService {
-
-    @Autowired
-    private val repository: UserRepository? = null
-
-    @Autowired
-    private val tokenRepository: TokenRepository? = null
-
-    @Autowired
-    private val passwordEncoder: PasswordEncoder? = null
-
-    @Autowired
-    private val jwtService: JwtService? = null
-
-    @Autowired
-    private val authenticationManager: AuthenticationManager? = null
+class AuthenticationService(
+    private val repository: UserRepository,
+    private val tokenRepository: TokenRepository,
+    private val passwordEncoder: PasswordEncoder,
+    private val jwtService: JwtService,
+    private val authenticationManager: AuthenticationManager
+) {
 
     fun register(request: RegisterRequest?): AuthenticationResponse {
         request ?: throw IllegalArgumentException("Request must not be null")
@@ -48,11 +39,11 @@ class AuthenticationService {
         val user = User(
             request.name,
             request.login,
-            passwordEncoder!!.encode(request.password),
+            passwordEncoder.encode(request.password),
             request.role
         )
-        val savedUser = repository!!.save(user)
-        val jwtToken = jwtService!!.generateToken(user)
+        val savedUser = repository.save(user)
+        val jwtToken = jwtService.generateToken(user)
         val refreshToken = jwtService.generateRefreshToken(user)
         saveUserToken(savedUser, jwtToken)
         return AuthenticationResponse(
@@ -65,15 +56,15 @@ class AuthenticationService {
     fun authenticate(request: AuthenticationRequest?): AuthenticationResponse {
         request ?: throw IllegalArgumentException("Request must not be null")
 
-        authenticationManager!!.authenticate(
+        authenticationManager.authenticate(
             UsernamePasswordAuthenticationToken(
                 request.login,
                 request.password
             )
         )
-        val user: User? = repository!!.findByLogin(request.login)
-            .orElseThrow()
-        val jwtToken = jwtService!!.generateToken(user as UserDetails)
+        val user: User? = repository.findByLogin(request.login)
+            .orElseThrow() { NotFoundException("User not found") }
+        val jwtToken = jwtService.generateToken(user as UserDetails)
         val refreshToken = jwtService.generateRefreshToken(user as UserDetails)
         saveUserToken(user, jwtToken)
         return AuthenticationResponse(
@@ -87,10 +78,10 @@ class AuthenticationService {
         var newJwtToken = jwtToken;
 
         // Check if a token with the same value already exists
-        var existingToken = tokenRepository!!.findByToken(jwtToken)
+        var existingToken = tokenRepository.findByToken(jwtToken)
         while (existingToken != null) {
             // Token with the same value already exists, regenerate the token
-            newJwtToken = jwtService!!.generateToken(user)
+            newJwtToken = jwtService.generateToken(user)
             existingToken = tokenRepository.findByToken(newJwtToken)
         }
 
@@ -106,7 +97,7 @@ class AuthenticationService {
     }
 
     private fun revokeAllUserTokens(user: User) {
-        val validUserTokens = tokenRepository!!.findAllValidTokenByUser(user.id!!)
+        val validUserTokens = tokenRepository.findAllValidTokenByUser(user.id!!)
         if (validUserTokens.isEmpty()) return
         validUserTokens.forEach(Consumer { token: Token ->
             token.expired = true
@@ -117,49 +108,51 @@ class AuthenticationService {
 
     @Throws(IOException::class)
     fun refreshToken(
-        request: HttpServletRequest?,
-        response: HttpServletResponse?
-    ) {
-        request ?: throw IllegalArgumentException("Request must not be null")
-        response ?: throw IllegalArgumentException("Response must not be null")
+        request: HttpServletRequest?
+    ): AuthenticationResponse {
+        request
+            ?: throw IllegalArgumentException("Request must not be null")
 
         val authHeader = request.getHeader(HttpHeaders.AUTHORIZATION)
         val userLogin: String
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return
-        }
-        val refreshToken = authHeader.substring(7)
-        tokenRepository!!.findByToken(refreshToken)?: throw NotFoundException("Token not found")
 
-        userLogin = jwtService!!.extractUsername(refreshToken)
-        val user = repository!!.findByLogin(userLogin)
-            .orElseThrow { NotFoundException("User not found") }
-        if (jwtService.isTokenValid(refreshToken, user)) {
-            // Invalidate and remove the old access token
-            val oldAccessToken = tokenRepository!!.findTokenByUserAndToken(user, refreshToken)
-            oldAccessToken?.let {
-                it.revoked = true
-                it.expired = true
-                tokenRepository.save(it)
-            }
-            // Generate a new access token
-            val newAccessToken = saveUserToken(user, jwtService.generateToken(user))
-            val authResponse = AuthenticationResponse(
-                newAccessToken.token,
-                refreshToken,
-                user.id
-            )
-            response.contentType = "application/json"
-            ObjectMapper().writeValue(response.outputStream, authResponse)
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw AuthorisationRequired("Authorization header is missing")
         }
+
+        val refreshToken = authHeader.substring(7)
+        tokenRepository.findByToken(refreshToken)?: throw NotFoundException("Token not found")
+        userLogin = jwtService.extractUsername(refreshToken)
+
+        val user = repository.findByLogin(userLogin)
+            .orElseThrow { NotFoundException("User not found") }
+
+        if (!jwtService.isTokenValid(refreshToken, user)) {
+            throw AuthorisationRequired("Token is not valid")
+        }
+
+        val oldAccessToken = tokenRepository.findTokenByUserAndToken(user, refreshToken)
+        oldAccessToken?.let {
+            it.revoked = true
+            it.expired = true
+            tokenRepository.save(it)
+        }
+        // Generate a new access token
+        val newAccessToken = saveUserToken(user, jwtService.generateToken(user))
+        val authResponse = AuthenticationResponse(
+            newAccessToken.token,
+            refreshToken,
+            user.id
+        )
+        return authResponse
     }
 
     @Scheduled(fixedRate = 3600000) // runs every hour
     fun removeExpiredTokens() {
-        val allTokens = tokenRepository!!.findAll()
+        val allTokens = tokenRepository.findAll()
         val expiredTokens = allTokens.filter {
             try {
-                jwtService!!.isTokenExpired(it.token)
+                jwtService.isTokenExpired(it.token)
                 it.expired
             } catch (e: AuthorisationRequired) {
                 true

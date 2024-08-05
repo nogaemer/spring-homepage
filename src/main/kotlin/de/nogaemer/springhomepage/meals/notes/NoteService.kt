@@ -7,6 +7,8 @@ import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.user.UserRepository
 import de.nogaemer.springhomepage.user.UserResponse
 import org.bson.types.ObjectId
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.cache.CacheManager
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Service
 
@@ -17,15 +19,15 @@ class NoteService(
     mealRepository: MealRepository,
     val userRepository: UserRepository,
     mongoTemplate: MongoTemplate,
-) : BaseService<Note, ObjectId>(repository, mealRepository, mongoTemplate) {
+    @Autowired
+    cacheManager: CacheManager
+) : BaseService<Note, ObjectId>(repository, mealRepository, mongoTemplate, cacheManager) {
 
     override fun findByUserId(userId: ObjectId, mealId: ObjectId): Note? {
         return repository.findByUserIdAndMealId(userId, mealId)
     }
 
-    override fun getEntityFieldName(): String {
-        return "notes"
-    }
+    override val entityFieldName = "notes"
 
     fun findAll(): List<Note> {
         return repository.findAll()
@@ -54,8 +56,15 @@ class NoteService(
         return super.create(response)
     }
 
-    override fun delete(id: ObjectId): Note {
-        return super.delete(id)
+    fun delete(id: ObjectId): Note {
+        val note = repository.findById(id)
+            .orElseThrow { IdNotFoundException("Note not found") }
+
+        return delete(id, note)
+    }
+
+    override fun delete(id: ObjectId, entity: Note): Note {
+        return super.delete(id, entity)
     }
 
     fun deleteNotesByMeal(meal: Meal) {

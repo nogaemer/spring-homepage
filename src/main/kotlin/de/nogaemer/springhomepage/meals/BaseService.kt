@@ -3,19 +3,24 @@ package de.nogaemer.springhomepage.meals
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.meals.models.Meal
+import de.nogaemer.springhomepage.user.Role
 import de.nogaemer.springhomepage.user.User
 import org.bson.types.ObjectId
-import org.springframework.data.annotation.LastModifiedBy
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.cache.CacheManager
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.repository.MongoRepository
 import org.springframework.security.core.context.SecurityContextHolder
+import java.util.concurrent.ConcurrentMap
 
 abstract class BaseService<T : EntityWithMealId, ID : Any>(
     private val repository: MongoRepository<T, ID>,
     private val mealRepository: MealRepository,
-    private val mongoTemplate: MongoTemplate
+    private val mongoTemplate: MongoTemplate,
+    @Autowired
+    private val cacheManager: CacheManager
 ) {
 
     open fun create(response: T): T {
@@ -23,39 +28,45 @@ abstract class BaseService<T : EntityWithMealId, ID : Any>(
             .orElseThrow { throw IdNotFoundException("Meal not found") }
 
         if (response.userId == null)
-            response.userId = getCurrentUserId()
+            response.userId = getCurrentUser().id
 
         findByUserId(response.userId!!, meal.id!!)?.let {
             if (it.mealId == response.mealId)
-                throw AlreadyReported("User already submitted this type of entity for this meal", response)
+                throw AlreadyReported("User already submitted this type of entity for this meal", it)
         }
 
         val savedEntity = repository.save(response)
 
         mongoTemplate.update(Meal::class.java)
             .matching(Criteria.where("id").`is`(savedEntity.mealId))
-            .apply(Update().push(getEntityFieldName(), savedEntity))
+            .apply(Update().push(entityFieldName, savedEntity))
             .first()
+
+        cacheManager.getCache("meals")!!.put(savedEntity.mealId, meal)
+        cacheManager.getCache("allMeals")!!.clear()
 
         return savedEntity
     }
 
-    open fun delete(id: ID): T {
-        val entity = repository.findById(id)
-            .orElseThrow { throw IdNotFoundException("Entity not found") }
+    open fun delete(id: ID, entity: T): T {
+        if (getCurrentUser().id != entity.userId && getCurrentUser().role != Role.ADMIN)
+            throw RuntimeException("You are not allowed to delete this entity")
 
         mongoTemplate.update(Meal::class.java)
             .matching(Criteria.where("id").`is`(entity.mealId))
-            .apply(Update().pull(getEntityFieldName(), entity))
+            .apply(Update().pull(entityFieldName, entity))
             .first()
 
         repository.deleteById(id)
+
+        cacheManager.getCache("meals")!!.evict(entity.mealId)
+        cacheManager.getCache("allMeals")!!.clear()
 
         return entity
     }
 
     abstract fun findByUserId(userId: ObjectId, mealId: ObjectId): T?
-    abstract fun getEntityFieldName(): String
+    abstract val entityFieldName: String
 }
 
 interface EntityWithMealId {
@@ -63,11 +74,32 @@ interface EntityWithMealId {
     val mealId: ObjectId
 }
 
-fun getCurrentUserId(): ObjectId? {
+fun getCurrentUser(): User {
     val authentication = SecurityContextHolder.getContext().authentication
     if (authentication != null && authentication.isAuthenticated) {
-        val userDetails = authentication.principal as? User
-        return userDetails?.id// Ensure your UserDetails implementation has a userId field
+        return authentication.principal as User
     }
-    return null
+    throw RuntimeException("User not found")
 }
+//
+//@Component
+//class CachePrinter(@Autowired private val cacheManager: CacheManager) {
+//
+//    fun printCache() {
+//        val cacheNames = cacheManager.cacheNames
+//        println("Cache Content:")
+//        cacheNames.forEach { cacheName ->
+//            println("Cache Name: $cacheName")
+//            val cache = cacheManager.getCache(cacheName)
+//            cache?.nativeCache?.let { nativeCache ->
+//                if (nativeCache is com.github.benmanes.caffeine.cache.Cache<*, *>) {
+//                    nativeCache.asMap().forEach { (key, value) ->
+//                        println("Key: $key, Value: $value")
+//                    }
+//                } else {
+//                    println("Cache type ${nativeCache.javaClass.name} not supported for direct printing")
+//                }
+//            }
+//        }
+//    }
+//}

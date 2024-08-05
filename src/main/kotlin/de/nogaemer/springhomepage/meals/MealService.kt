@@ -7,32 +7,40 @@ import de.nogaemer.springhomepage.meals.import.Chefkoch
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.models.MealImportMethod
 import de.nogaemer.springhomepage.meals.ratings.RatingService
-import de.nogaemer.springhomepage.meals.tags.Tag
-import org.bson.types.ObjectId
-import org.springframework.stereotype.Service
 import de.nogaemer.springhomepage.meals.tags.TagService
-import kotlin.jvm.optionals.getOrNull
+import org.bson.types.ObjectId
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.cache.annotation.Caching
+import org.springframework.context.ApplicationContext
+import org.springframework.scheduling.annotation.Async
+import org.springframework.stereotype.Service
+import java.util.concurrent.CompletableFuture
 
 @Service
 class MealService(
     val repository: MealRepository,
     val ratingService: RatingService,
-    val tagService: TagService
+    val tagService: TagService,
+    val applicationContext: ApplicationContext
 ) {
 
+    private fun self(): MealService = applicationContext.getBean(MealService::class.java)
+
+
+    @Cacheable("allMeals")
     fun findAll(): List<Meal> {
         return repository.findAll()
     }
 
-    fun searchByName(name: String?): List<Meal>? {
-        if (name == "") return findAll()
-
-        return repository.searchByName(name)
+    @Cacheable("meals")
+    fun findById(id: ObjectId): Meal {
+        return repository.findById(id).orElseThrow { IllegalArgumentException("Meal with id $id not found") }
     }
 
-    fun findById(id: ObjectId): Meal {
-        return repository.findById(id).getOrNull()
-            ?: throw IdNotFoundException("Meal with id $id not found")
+    fun searchByName(name: String?): List<Meal>? {
+        if (name == "") return self().findAll()
+        return repository.searchByName(name)
     }
 
     fun create(meal: MealDto): Meal {
@@ -71,30 +79,40 @@ class MealService(
         return repository.save(meal)
     }
 
-    fun importMeal(tag: MealImportMethod, url: String, save: Boolean = true): Meal {
-        when (tag) {
-            MealImportMethod.CHEFKOCH -> {
-                if (!url.contains("chefkoch.de")) throw IllegalArgumentException("Url is not from Chefkoch")
-                val meal = Chefkoch().getMealFromUrl(url)
+    @Async
+    fun importMealAsync(tag: MealImportMethod, url: String, save: Boolean = true): CompletableFuture<Meal> {
+        return CompletableFuture.supplyAsync {
+            when (tag) {
+                MealImportMethod.CHEFKOCH -> {
+                    if (!url.contains("chefkoch.de")) throw IllegalArgumentException("Url is not from Chefkoch")
+                    val meal = Chefkoch().getMealFromUrl(url)
 
-                if (!save) return meal
+                    if (!save) return@supplyAsync meal
 
-                if (repository.countByUrl(url) >= 1)
-                    throw AlreadyReported("Meal with url $url already exists", meal)
+                    if (repository.countByUrl(url) >= 1)
+                        throw AlreadyReported("Meal with url $url already exists", meal)
 
-                return repository.save(meal)
+                    repository.save(meal)
+                }
             }
         }
     }
 
+    @Caching(evict = [
+        CacheEvict(cacheNames = ["meals"], key = "#id"),
+        CacheEvict(cacheNames = ["allMeals"], allEntries = true)
+    ])
     fun deleteById(id: ObjectId) {
-        val meal = findById(id)
+        val meal = self().findById(id)
 
-        // Assuming you have a service for handling ratings
         ratingService.deleteRatingsByMeal(meal)
         repository.deleteById(id)
     }
 
+    @Caching(evict = [
+        CacheEvict(cacheNames = ["meals"], key = "#id"),
+        CacheEvict(cacheNames = ["allMeals"], allEntries = true)
+    ])
     fun update(id: ObjectId, meal: MealDto): Meal {
 
         val originalMeal = repository.findById(id).orElseThrow {

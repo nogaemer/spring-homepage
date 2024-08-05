@@ -17,6 +17,7 @@ class ApiExceptionHandler {
 
         val code = when (exception) {
             is IdNotFoundException -> HttpStatus.NOT_FOUND
+            is NotFoundException -> HttpStatus.NOT_FOUND
             is TagNotFoundException -> HttpStatus.NOT_FOUND
             is AlreadyReported -> HttpStatus.ALREADY_REPORTED
             is AuthorisationRequired -> HttpStatus.UNAUTHORIZED

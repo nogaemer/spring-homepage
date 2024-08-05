@@ -80,7 +80,7 @@ class MealImportController {
 
         val tag = MealImportMethod.valueOf(importTag.uppercase())
 
-        return ResponseEntity(service!!.importMeal(tag, url, false), HttpStatus.CREATED)
+        return ResponseEntity(service!!.importMealAsync(tag, url, false).get(), HttpStatus.CREATED)
     }
 
     @PostMapping("/meal")
@@ -90,6 +90,6 @@ class MealImportController {
     ): ResponseEntity<Meal> {
         val tag = MealImportMethod.valueOf(importTag.uppercase())
 
-        return ResponseEntity(service!!.importMeal(tag, import.url), HttpStatus.CREATED)
+        return ResponseEntity(service!!.importMealAsync(tag, import.url).get(), HttpStatus.CREATED)
     }
 }
