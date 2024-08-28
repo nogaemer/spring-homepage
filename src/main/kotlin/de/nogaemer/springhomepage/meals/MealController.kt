@@ -37,6 +37,17 @@ class MealController {
         return ResponseEntity.ok(response)
     }
 
+    @GetMapping("/byFilter")
+    fun getFiltertMeals(
+        @RequestParam name: String?,
+        @RequestParam users: String?,
+        @RequestParam tags: String?,
+        @RequestParam time: Int?
+    ): ResponseEntity<List<Meal>> {
+        val response = service!!.filterMeals(name, users, tags, time)
+        return ResponseEntity.ok(response)
+    }
+
     @PutMapping("/{id}")
     fun updateMeal(
         @PathVariable id: ObjectId?,
