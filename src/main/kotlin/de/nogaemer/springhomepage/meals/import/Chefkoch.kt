@@ -16,12 +16,11 @@ import kotlin.time.Duration
 import kotlin.time.DurationUnit
 
 @Component
-class Chefkoch {
+class Chefkoch(
+    val tagService: TagService
+) {
     private var page: Document? = null
     private var jsonData: JSONObject? = null
-
-    @Autowired
-    private val tagService: TagService? = null
 
 
     fun getMealFromUrl(url: String): Meal {
@@ -131,7 +130,7 @@ class Chefkoch {
         jsonData!!.getJSONArray("keywords").forEach { tag ->
             tag as String
             tags.add(
-                tagService!!.saveTag(
+                tagService.saveTag(
                     Tag(
                         id = tag.lowercase().trimStart(),
                         name = tag.trimStart()

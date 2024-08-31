@@ -94,7 +94,7 @@ class MealService(
             when (tag) {
                 MealImportMethod.CHEFKOCH -> {
                     if (!url.contains("chefkoch.de")) throw IllegalArgumentException("Url is not from Chefkoch")
-                    val meal = Chefkoch().getMealFromUrl(url)
+                    val meal = Chefkoch(tagService).getMealFromUrl(url)
 
                     if (!save) return@supplyAsync meal
 
