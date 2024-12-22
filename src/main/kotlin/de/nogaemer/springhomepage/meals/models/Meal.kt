@@ -29,9 +29,7 @@ data class Meal(
 
     val instructions: List<String>,
 
-    val imageSrc: List<String>,
-
-    val imageSrcSet: List<String>,
+    val images: List<ImgLink>?,
 
     @NotNull
     val difficulty: String,

@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.meals.dto
 
+import de.nogaemer.springhomepage.meals.models.ImgLink
 import de.nogaemer.springhomepage.meals.models.Ingredient
 import lombok.AllArgsConstructor
 import lombok.Data
@@ -19,9 +20,7 @@ data class MealDto(
 
     val instructions: List<String>,
 
-    val imageSrc: List<String>,
-
-    val imageSrcSet: List<String>,
+    val images: List<ImgLink>,
 
     @NotNull
     val difficulty: String,

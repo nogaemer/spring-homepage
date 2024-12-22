@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.meals.import
 
+import de.nogaemer.springhomepage.meals.models.ImgLink
 import de.nogaemer.springhomepage.meals.models.Ingredient
 import de.nogaemer.springhomepage.meals.models.Meal
 import de.nogaemer.springhomepage.meals.tags.Tag
@@ -10,7 +11,6 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
@@ -31,8 +31,7 @@ class Chefkoch(
             ingredients = getIngredients(),
             instructions = getInstructions(),
             tags = getTags(),
-            imageSrc = getImageUrl(),
-            imageSrcSet = getImageUrls(),
+            images = getImageUrls(),
             difficulty = getDifficulty(),
             time = getTime(),
             portions = getPotions(),
@@ -142,8 +141,8 @@ class Chefkoch(
         return tags
     }
 
-    private fun getImageUrls(): List<String> {
-        val imageUrls = mutableListOf<String>()
+    private fun getImageUrls(): List<ImgLink> {
+        val imgLinkList = mutableListOf<ImgLink>()
 
         page!!.select(".ds-mb-left > #recipe-image-carousel > .recipe-image-carousel-slide").forEach { image ->
             val imageUrl = image.select("a > amp-img").attr("srcset")
@@ -152,14 +151,27 @@ class Chefkoch(
                 return@forEach
             }
 
-            if (!imageUrls.contains(imageUrl)) {
-                imageUrls.add(imageUrl)
+            val imageUrls = ArrayList<String>()
+
+            imageUrl.split(",").forEach {
+                if (!imageUrls.contains(it.trim())){
+                    imageUrls.add(it.trim())
+                }
             }
+
+            imgLinkList.add(
+                ImgLink(
+                    thumbnail = imageUrls[0],
+                    srcSetArray = imageUrls,
+                    srcSetString = imageUrl
+                )
+            )
         }
 
-        return imageUrls
+        return imgLinkList
     }
 
+    @Deprecated("Use getImageUrls() instead")
     private fun getImageUrl(): List<String> {
         val imageUrls = mutableListOf<String>()
 

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
 import de.nogaemer.springhomepage.meals.models.DoubleSerializer
+import de.nogaemer.springhomepage.meals.models.ImgLink
 import de.nogaemer.springhomepage.meals.models.Ingredient
 import de.nogaemer.springhomepage.meals.notes.Note
 import de.nogaemer.springhomepage.meals.ratings.Rating
@@ -29,6 +30,8 @@ data class BackupMealModel(
     val ingredients: List<Ingredient>,
 
     val instructions: List<String>,
+
+    val images: List<ImgLink>,
 
     val imageSrc: List<String>,
 
