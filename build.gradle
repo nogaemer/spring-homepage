@@ -35,6 +35,7 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
     implementation 'me.paulschwarz:spring-dotenv:2.5.4'
+    implementation 'io.github.cdimascio:dotenv-kotlin:6.2.2'
     implementation 'org.jsoup:jsoup:1.17.2'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'org.json:json:20240303'

@@ -1,6 +1,5 @@
 package de.nogaemer.springhomepage.updatedb
 
-import de.nogaemer.springhomepage.meals.models.Meal
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -11,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/v1/updateDB")
-class UpdateController (val service: UpdateService?) {
+class UpdateController(val service: UpdateService?) {
 
     @GetMapping
     fun getMealsByName(

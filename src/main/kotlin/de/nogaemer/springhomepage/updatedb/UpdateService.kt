@@ -1,11 +1,6 @@
 package de.nogaemer.springhomepage.updatedb
 
-import de.nogaemer.springhomepage.meals.models.ImgLink
-import de.nogaemer.springhomepage.meals.models.Meal
 import org.springframework.data.mongodb.core.MongoTemplate
-import org.springframework.data.mongodb.core.query.Criteria
-import org.springframework.data.mongodb.core.query.Query
-import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
 
 @Service
