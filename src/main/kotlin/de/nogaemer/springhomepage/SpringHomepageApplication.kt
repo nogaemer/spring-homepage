@@ -32,18 +32,5 @@ class SpringHomepageApplication {
 }
 
 fun main(args: Array<String>) {
-    val rootFolder = File("/")
-    printTreeView(rootFolder)
     runApplication<SpringHomepageApplication>(*args)
-}
-
-fun printTreeView(file: File, indent: String = "") {
-    if (file.isDirectory) {
-        println("$indent|-- ${file.name}")
-        file.listFiles()?.forEach { child ->
-            printTreeView(child, "$indent    ")
-        }
-    } else {
-        println("$indent|-- ${file.name}")
-    }
 }

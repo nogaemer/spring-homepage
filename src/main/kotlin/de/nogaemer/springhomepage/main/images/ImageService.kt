@@ -15,7 +15,15 @@ import javax.imageio.ImageIO
 
 @Service
 class ImageService {
-    private val dotenv = Dotenv.load()
+    private val dotenv = try {
+        Dotenv.load()
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun getEnvVariable(key: String): String? {
+        return dotenv?.get(key) ?: System.getenv(key)
+    }
 
     fun uploadImage(base64Input: String): Image {
         val imageBytes = Base64.getDecoder().decode(base64Input)
@@ -60,7 +68,7 @@ class ImageService {
             .addFormDataPart("image", base64Image)
             .build()
 
-        val apiKey = dotenv["IMGBB_API_KEY"] ?: throw IllegalStateException("IMGBB_API_KEY environment variable is not set")
+        val apiKey = getEnvVariable("IMGBB_API_KEY") ?: throw IllegalStateException("IMGBB_API_KEY environment variable is not set")
         val request = Request.Builder()
             .url("https://api.imgbb.com/1/upload?key=${apiKey}")
             .post(requestBody)
