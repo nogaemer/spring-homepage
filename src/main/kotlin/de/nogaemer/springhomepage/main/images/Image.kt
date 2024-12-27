@@ -12,12 +12,12 @@ data class Image(
     val deleteUrls: Array<String>? = null
 ) {
     fun addToSrcSet(src: String) {
-        srcSetArray?.add(src);
+        srcSetArray?.add(src)
         srcSetString = srcSetArray?.joinToString(", ")
     }
 
     fun removeFromSrcSet(src: String) {
-        srcSetArray?.remove(src);
+        srcSetArray?.remove(src)
         srcSetString = srcSetArray?.joinToString(", ")
     }
 
