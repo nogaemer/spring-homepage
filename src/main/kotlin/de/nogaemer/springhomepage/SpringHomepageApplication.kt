@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import java.io.File
 
 
 @SpringBootApplication
@@ -31,5 +32,18 @@ class SpringHomepageApplication {
 }
 
 fun main(args: Array<String>) {
+    val rootFolder = File("/")
+    printTreeView(rootFolder)
     runApplication<SpringHomepageApplication>(*args)
+}
+
+fun printTreeView(file: File, indent: String = "") {
+    if (file.isDirectory) {
+        println("$indent|-- ${file.name}")
+        file.listFiles()?.forEach { child ->
+            printTreeView(child, "$indent    ")
+        }
+    } else {
+        println("$indent|-- ${file.name}")
+    }
 }
