@@ -2,12 +2,16 @@ package de.nogaemer.springhomepage.main.meals
 
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
+import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
 import de.nogaemer.springhomepage.main.meals.dto.MealDto
+import de.nogaemer.springhomepage.main.meals.dto.MealIngredientDto
 import de.nogaemer.springhomepage.main.meals.import.Chefkoch
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.models.MealImportMethod
+import de.nogaemer.springhomepage.main.meals.models.MealIngredient
 import de.nogaemer.springhomepage.main.ratings.RatingService
 import de.nogaemer.springhomepage.main.meals.tags.TagService
+import de.nogaemer.springhomepage.main.meals.units.UnitService
 import org.bson.BsonNull
 import org.bson.Document
 import org.bson.types.ObjectId
@@ -30,12 +34,33 @@ class MealService(
     val repository: MealRepository,
     val ratingService: RatingService,
     val tagService: TagService,
+    val unitService: UnitService,
     val applicationContext: ApplicationContext,
     private val mongoTemplate: MongoTemplate
 ) {
 
     private fun self(): MealService = applicationContext.getBean(MealService::class.java)
 
+
+    private fun resolveIngredients(dtoIngredients: List<MealIngredientDto>): List<MealIngredient> {
+        return dtoIngredients.map { dto ->
+            val unitObj = dto.unit.let {
+                try {
+                    unitService.findById(it.id)
+                } catch (ex: IllegalArgumentException) {
+                    throw IdNotFoundException("Invalid unit id '${it}'")
+                }
+            }
+
+            unitObj ?: throw UnitNotFoundException("Could not find unit for ingredient '${dto.name}'")
+
+            MealIngredient(
+                name = dto.name,
+                amount = dto.amount,
+                unit = unitObj
+            )
+        }
+    }
 
     @Cacheable("allMeals")
     fun findAll(): List<Meal> {
@@ -52,33 +77,38 @@ class MealService(
         return repository.searchByName(name)
     }
 
+    @Caching(
+        evict = [
+            CacheEvict(cacheNames = ["allMeals"], allEntries = true)
+        ]
+    )
     fun create(meal: MealDto): Meal {
-
         repository.findByName(meal.name)?.let {
             throw AlreadyReported("Meal with name ${meal.name} already exists", meal)
         }
 
-        val tags = tagService.stringToTags(meal.tags)
+        val ingredients = resolveIngredients(meal.ingredients)
 
         val newMeal = Meal(
             name = meal.name,
-            ingredients = meal.ingredients,
+            ingredients = ingredients,
             instructions = meal.instructions,
             images = meal.images,
             difficulty = meal.difficulty,
             time = meal.time,
             portions = meal.portions,
             calories = meal.calories,
-            tags = mutableListOf()
+            tags = meal.tags
         )
 
-        val returnMeal = repository.save(newMeal)
-
-        tagService.addTagsToMeal(tags, returnMeal)
-
-        return returnMeal
+        return repository.save(newMeal)
     }
 
+    @Caching(
+        evict = [
+            CacheEvict(cacheNames = ["allMeals"], allEntries = true)
+        ]
+    )
     fun create(meal: Meal): Meal {
         repository.findByName(meal.name)?.let {
             throw AlreadyReported("Meal with name ${meal.name} already exists", meal)
@@ -93,7 +123,7 @@ class MealService(
             when (tag) {
                 MealImportMethod.CHEFKOCH -> {
                     if (!url.contains("chefkoch.de")) throw IllegalArgumentException("Url is not from Chefkoch")
-                    val meal = Chefkoch(tagService).getMealFromUrl(url)
+                    val meal = Chefkoch(tagService, unitService).getMealFromUrl(url)
 
                     if (!save) return@supplyAsync meal
 
@@ -127,22 +157,22 @@ class MealService(
         ]
     )
     fun update(id: ObjectId, meal: MealDto): Meal {
-
         val originalMeal = repository.findById(id).orElseThrow {
             IdNotFoundException("Meal with id $id not found")
         }
 
-        val tags = tagService.updateMealTags(originalMeal, meal.tags)
+        val resolvedIngredients = resolveIngredients(meal.ingredients)
 
         val updatedMeal = originalMeal.copy(
             name = meal.name,
-            ingredients = meal.ingredients,
+            ingredients = resolvedIngredients,
             instructions = meal.instructions,
             difficulty = meal.difficulty,
             time = meal.time,
+            images = meal.images,
             portions = meal.portions,
             calories = meal.calories,
-            tags = tags,
+            tags = meal.tags,
             url = originalMeal.url,
             rating = originalMeal.rating
         ).apply {
@@ -164,7 +194,7 @@ class MealService(
         val desiredName = name ?: ""
         val minTime = 0
         val maxTime = time ?: 1000
-        var userIds = emptyList<ObjectId>()
+        var userIds: List<ObjectId>
 
         try {
             userIds = _users?.split(",")?.map { user -> ObjectId(user) } ?: emptyList()

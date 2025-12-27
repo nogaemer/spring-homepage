@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.main.images
 
+import de.nogaemer.springhomepage.utils.EnvUtils
 import io.github.cdimascio.dotenv.Dotenv
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -15,39 +16,35 @@ import javax.imageio.ImageIO
 
 @Service
 class ImageService {
-    private val dotenv = try {
-        Dotenv.load()
-    } catch (e: Exception) {
-        null
-    }
-
-    private fun getEnvVariable(key: String): String? {
-        return dotenv?.get(key) ?: System.getenv(key)
-    }
-
     fun uploadImage(base64Input: String): Image {
         val imageBytes = Base64.getDecoder().decode(base64Input)
 
         val inputStream = ByteArrayInputStream(imageBytes)
-        val originalImage = ImageIO.read(inputStream)
+        val originalImage = ImageIO.read(inputStream) ?: throw IOException("Failed to read image from input stream")
+        inputStream.close()
 
         val croppedImage = cropTo3by2Ratio(originalImage)
         val resizedImage800 = resizeImage(croppedImage, 800, 534)
         val resizedImage360 = resizeImage(croppedImage, 360, 240)
 
-        val image800 = uploadImageToImgBB(resizedImage800).getJSONObject("data")
+
         val image360 = uploadImageToImgBB(resizedImage360).getJSONObject("data")
+        val image800 = uploadImageToImgBB(resizedImage800).getJSONObject("data")
+
+        val image360Url = image360.getJSONObject("image").getString("url")
+        val image640Url = image800.getJSONObject("medium").getString("url") ?: image800.getJSONObject("image").getString("url")
+        val image800Url = image800.getJSONObject("image").getString("url")
 
         return Image(
             thumbnail = image800.getJSONObject("thumb").getString("url"),
             srcSetArray = arrayListOf(
-                image360.getJSONObject("image").getString("url"),
-                image800.getJSONObject("medium").getString("url"),
-                image800.getJSONObject("image").getString("url")
+                image360Url,
+                image640Url,
+                image800Url
             ),
-            srcSetString = image360.getJSONObject("image").getString("url") + " 360w, " +
-                            image800.getJSONObject("medium").getString("url") + " 640w, " +
-                            image800.getJSONObject("image").getString("url") + " 800w",
+            srcSetString = image360Url + " 360w, " +
+                    image640Url + " 640w, " +
+                    image800Url + " 800w",
             deleteUrls = arrayOf(
                 image360.getString("delete_url"),
                 image800.getString("delete_url")
@@ -68,7 +65,7 @@ class ImageService {
             .addFormDataPart("image", base64Image)
             .build()
 
-        val apiKey = getEnvVariable("IMGBB_API_KEY") ?: throw IllegalStateException("IMGBB_API_KEY environment variable is not set")
+        val apiKey = EnvUtils.getEnvVariable("IMGBB_API_KEY") ?: throw IllegalStateException("IMGBB_API_KEY environment variable is not set")
         val request = Request.Builder()
             .url("https://api.imgbb.com/1/upload?key=${apiKey}")
             .post(requestBody)
@@ -77,8 +74,7 @@ class ImageService {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-            val jsonResponse = response.body?.string()
-            println(JSONObject(jsonResponse))
+            val jsonResponse = response.body?.string() ?: throw IOException("Response body is null")
             return JSONObject(jsonResponse)
         }
     }

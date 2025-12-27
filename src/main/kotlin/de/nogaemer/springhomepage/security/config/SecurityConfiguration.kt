@@ -1,5 +1,7 @@
 package de.nogaemer.springhomepage.security.config
 
+import de.nogaemer.springhomepage.security.auth.AuthenticationService
+import de.nogaemer.springhomepage.security.auth.OAuth2AuthenticationSuccessHandler
 import de.nogaemer.springhomepage.user.Permission
 import de.nogaemer.springhomepage.user.Role
 import de.nogaemer.springhomepage.user.Role.*
@@ -22,7 +24,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.logout.LogoutHandler
 
 import de.nogaemer.springhomepage.user.Permission.*
+import de.nogaemer.springhomepage.user.User
+import de.nogaemer.springhomepage.user.UserRepository
+import de.nogaemer.springhomepage.utils.EnvUtils
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.security.oauth2.core.user.OAuth2User
+import org.springframework.security.web.authentication.AuthenticationFailureHandler
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler
+import org.springframework.stereotype.Component
+import org.springframework.web.util.UriComponentsBuilder
 
 @Configuration
 @EnableWebSecurity
@@ -37,9 +47,10 @@ class SecurityConfiguration {
     @Autowired
     private val logoutHandler: LogoutHandler? = null
 
+
     @Bean
     @Throws(Exception::class)
-    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun securityFilterChain(http: HttpSecurity, oauth2AuthenticationSuccessHandler: OAuth2AuthenticationSuccessHandler): SecurityFilterChain {
         http
             .csrf { obj: CsrfConfigurer<HttpSecurity> -> obj.disable() }
             .authorizeHttpRequests { req ->
@@ -57,6 +68,11 @@ class SecurityConfiguration {
                     .anyRequest()
                     .authenticated()
             }
+            .oauth2Login { oauth2 ->
+                oauth2
+                    .successHandler(oauth2AuthenticationSuccessHandler)
+                    .failureHandler(authenticationFailureHandler())
+            }
             .sessionManagement { session ->
                 session.sessionCreationPolicy(
                     SessionCreationPolicy.STATELESS
@@ -72,6 +88,16 @@ class SecurityConfiguration {
 
 
         return http.build()
+    }
+
+    @Bean
+    fun authenticationFailureHandler(): AuthenticationFailureHandler {
+        val baseUrl = EnvUtils.getEnvVariable("CLIENT_BASE_URL") ?: throw IllegalStateException("CLIENT_BASE_URL environment variable is not set")
+
+        return AuthenticationFailureHandler { request, response, exception ->
+            // Redirect to your React app with an error
+            response.sendRedirect("${request.getHeader("Origin") ?: baseUrl}/api/v1/auth/error")
+        }
     }
 
     companion object {
@@ -91,3 +117,4 @@ class SecurityConfiguration {
         )
     }
 }
+

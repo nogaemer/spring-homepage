@@ -2,10 +2,18 @@ package de.nogaemer.springhomepage.main.meals.tags
 
 import de.nogaemer.springhomepage.main.meals.MealRepository
 import de.nogaemer.springhomepage.main.meals.models.Meal
+import org.bson.Document
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort.*
 import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.aggregation.Aggregation.*
+import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
+
 
 @Service
 class TagService(
@@ -18,51 +26,18 @@ class TagService(
         return tagRepository.save(tag)
     }
 
+    fun saveTags(tags: List<Tag>): List<Tag> {
+        return tagRepository.saveAll(tags)
+    }
+
     fun removeTag(tag: Tag) {
         tagRepository.delete(tag)
     }
 
-    fun stringToTags(tags: List<String>): MutableList<Tag> {
-        val tagList = mutableListOf<Tag>()
-
-        tags.forEach {
-            val formatedTadAsString = it.lowercase().trimStart()
-
-            val tag = tagRepository.findById(formatedTadAsString)
-
-            if (tag.isEmpty) {
-                tagList.add(
-                    saveTag(
-                        Tag(
-                            id = formatedTadAsString,
-                            name = it.trimStart()
-                        )
-                    )
-                )
-            } else {
-                tagList.add(tag.get())
-            }
-        }
-
-        return tagList
-    }
-
-    fun addStringsAsTagsToMeal(tags: List<String>, meal: Meal): MutableList<Tag> {
-        val tagList = stringToTags(tags)
-
-        tagList.forEach { tag ->
-            addTagToMeal(tag, meal)
-        }
-
-        return tagList
-    }
-
     fun addTagToMeal(tag: Tag, meal: Meal): Tag {
-        if (tag.meals.contains(meal.id!!)) {
+        if (meal.tags.contains(tag)) {
             return tag
         }
-
-        tag.meals.add(meal.id!!)
 
         saveTag(tag)
 
@@ -81,11 +56,9 @@ class TagService(
     }
 
     fun removeTagFromMeal(tag: Tag, meal: Meal): Tag {
-        if (!tag.meals.contains(meal.id!!)) {
+        if (!meal.tags.none{it.id == tag.id}) {
             return tag
         }
-
-        tag.meals.remove(meal.id!!)
 
         mongoTemplate.update(Meal::class.java)
             .matching(Criteria.where("id").`is`(meal.id))
@@ -96,30 +69,78 @@ class TagService(
     }
 
     fun updateMealTags(originalMeal: Meal, tags: MutableList<Tag>) {
-
         val originalTags = originalMeal.tags
 
-        originalTags.forEach { tag ->
-            if (!tags.contains(tag)) {
-                val addedTag = removeTagFromMeal(tag, originalMeal)
-                if (addedTag.meals.size == 0) {
-                    removeTag(tag)
-                }
-            }
-        }
+        val originalTagIds = originalTags.map { it.id }.toSet()
+        val newTagIds = tags.map { it.id }.toSet()
 
-        tags.forEach { tag ->
-            if (!originalTags.contains(tag)) {
-                addTagToMeal(tag, originalMeal)
-            }
-        }
+        if (originalTagIds == newTagIds) return
+
+        mongoTemplate.update(Meal::class.java)
+            .matching(Criteria.where("id").`is`(originalMeal.id))
+            .apply(Update().set("tags", tags))
+            .first()
+
     }
 
-    fun updateMealTags(originalMeal: Meal, tags: List<String>): MutableList<Tag> {
-        val tagList = stringToTags(tags)
-        updateMealTags(originalMeal, tagList)
+    fun getTags(limit: Int, offset: Int = 0, query: String): MutableList<Tag> {
+        val pageable: Pageable = PageRequest.of(offset, limit)
 
-        return tagList
+        if (query.isBlank()) {
+            return tagRepository.findAll(pageable).content
+        }
+
+        val regex = ".*${query}.*"
+
+        // Per-field match -> score \`1\` if matched, else \`0\`
+        val nameMatchScore = `when`({ _ ->
+            Document("\$regexMatch",
+                Document("input", "\$name")
+                    .append("regex", regex)
+                    .append("options", "i")
+            )
+        }).then(3).otherwise(0)
+
+        val descriptionMatchScore = `when`({ _ ->
+            Document("\$regexMatch",
+                Document("input", "\$description")
+                    .append("regex", regex)
+                    .append("options", "i")
+            )
+        }).then(2).otherwise(0)
+
+        val typeMatchScore = `when`({ _ ->
+            Document("\$regexMatch",
+                Document("input", "\$type")
+                    .append("regex", regex)
+                    .append("options", "i")
+            )
+        }).then(1).otherwise(0)
+
+        // Sum all contributions into \`priority\`
+        val priorityExpr = ArithmeticOperators.Add.valueOf(nameMatchScore)
+            .add(descriptionMatchScore)
+            .add(typeMatchScore)
+
+        val aggregation = newAggregation(
+            // Pre-filter candidates
+            match(
+                Criteria().orOperator(
+                    Criteria.where("name").regex(regex, "i"),
+                    Criteria.where("type").regex(regex, "i"),
+                    Criteria.where("description").regex(regex, "i")
+                )
+            ),
+            // Compute \`priority\`
+            addFields().addField("priority").withValue(priorityExpr).build(),
+            // Sort by \`priority\` desc, then \`name\` asc
+            sort(by(Order.desc("priority"), Order.asc("name"))),
+            // Pagination
+            skip((offset * limit).toLong()),
+            limit(limit.toLong())
+        )
+
+        val results = mongoTemplate.aggregate(aggregation, "tags", Tag::class.java)
+        return results.mappedResults.toMutableList()
     }
-
 }

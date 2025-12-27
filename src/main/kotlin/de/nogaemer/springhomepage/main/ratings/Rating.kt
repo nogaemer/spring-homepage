@@ -31,7 +31,7 @@ data class Rating(
 
     @LastModifiedDate
     var modifiedDate: LocalDateTime? = null
-): de.nogaemer.springhomepage.main.meals.EntityWithMealId {
+): EntityWithMealId {
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)
     private var id: ObjectId? = null

@@ -1,10 +1,13 @@
 package de.nogaemer.springhomepage.main.meals.import
 
+import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
 import de.nogaemer.springhomepage.main.images.Image
-import de.nogaemer.springhomepage.main.meals.models.Ingredient
+import de.nogaemer.springhomepage.main.meals.models.MealIngredient
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.tags.Tag
 import de.nogaemer.springhomepage.main.meals.tags.TagService
+import de.nogaemer.springhomepage.main.meals.units.IngredientUnit
+import de.nogaemer.springhomepage.main.meals.units.UnitService
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONException
@@ -17,7 +20,8 @@ import kotlin.time.DurationUnit
 
 @Component
 class Chefkoch(
-    val tagService: TagService
+    val tagService: TagService,
+    val unitService: UnitService,
 ) {
     private var page: Document? = null
     private var jsonData: JSONObject? = null
@@ -61,8 +65,10 @@ class Chefkoch(
 
         val jsonHeaders = page!!.selectXpath("/html/head/script")
         jsonHeaders.forEach {
-            if (it.data().contains("\"@type\": \"Recipe\"")) {
+
+            if (it.data().contains("\"@type\":\"Recipe\"")) {
                 jsonData = JSONObject(it.data().toString())
+                return@forEach
             }
         }
     }
@@ -71,14 +77,14 @@ class Chefkoch(
         return page!!.selectXpath("/html/body/main/article[1]/div/h1").text()
     }
 
-    private fun getIngredients(): List<Ingredient> {
-        val ingredients = mutableListOf<Ingredient>()
+    private fun getIngredients(): List<MealIngredient> {
+        val mealIngredients = mutableListOf<MealIngredient>()
 
         jsonData!!.getJSONArray("recipeIngredient").forEach { ingredient ->
             ingredient as String
 
             var name = ""
-            var unit = ""
+            var unitString = ""
             var amount = ""
 
             when {
@@ -93,13 +99,42 @@ class Chefkoch(
 
                 ingredient.count { it == ' ' } >= 2 -> {
                     name = ingredient.split(" ", limit = 3)[2]
-                    unit = ingredient.split(" ")[1]
+                    unitString = ingredient.split(" ")[1]
                     amount = ingredient.split(" ")[0]
                 }
             }
 
-            ingredients.add(
-                Ingredient(
+
+            // Find the best matching unit
+            var unit: IngredientUnit?
+            val candidates = unitService.getUnits(10, 0, unitString)
+            val query = unitString.trim()
+            unit = candidates.find {
+                it.abbreviation.equals(query, true) ||
+                        it.abbreviationPlural.equals(query, true) ||
+                        it.fullName.equals(query, true) ||
+                        it.fullNamePlural.equals(query, true)
+            }
+            if (unit == null && query.isNotEmpty()) {
+                unit = candidates.find {
+                    it.abbreviation.startsWith(query, true) ||
+                            it.fullName.startsWith(query, true)
+                }
+            }
+            if (unit == null && query.isNotEmpty()) {
+                unit = candidates.find {
+                    it.abbreviation.contains(query, true) ||
+                            it.fullName.contains(query, true)
+                }
+            }
+            if (unit == null) {
+                unit = candidates.firstOrNull()
+            }
+
+            if (unit == null) throw UnitNotFoundException("Could not find unit for ingredient '$ingredient' (parsed unit: '$unitString')")
+
+            mealIngredients.add(
+                MealIngredient(
                     name = name,
                     amount = amount,
                     unit = unit
@@ -108,16 +143,19 @@ class Chefkoch(
 
         }
 
-        return ingredients
+        return mealIngredients
     }
 
     private fun getInstructions(): List<String> {
         val instructions = mutableListOf<String>()
 
-        jsonData!!.getString("recipeInstructions")
-            .split("\n\n")
+        jsonData!!.getJSONArray("recipeInstructions")
+            .getJSONObject(0)
+            .getJSONArray("itemListElement")
             .forEach {
-                instructions.add(it)
+                instructions.add(
+                    (it as JSONObject).getString("text")
+                )
             }
 
         return instructions
@@ -125,21 +163,22 @@ class Chefkoch(
 
     private fun getTags(): MutableList<Tag> {
         val tags = mutableListOf<Tag>()
-
-        jsonData!!.getJSONArray("keywords").forEach { tag ->
-            tag as String
+        val keywordsString = jsonData!!.getString("keywords")
+        keywordsString.split(",").forEach { tag ->
             tags.add(
                 tagService.saveTag(
                     Tag(
-                        id = tag.lowercase().trimStart(),
-                        name = tag.trimStart()
+                        name = tag.trim(),
+                        type = "chefkoch",
+                        description = "",
+                        color = "#e06c75"
                     )
                 )
             )
         }
-
         return tags
     }
+
 
     private fun getImageUrls(): List<Image> {
         val imageList = mutableListOf<Image>()

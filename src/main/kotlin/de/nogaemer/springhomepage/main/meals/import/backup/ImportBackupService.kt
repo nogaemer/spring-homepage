@@ -19,7 +19,7 @@ class ImportBackupService(
         val mealList = mutableListOf<Meal>()
 
         meals.forEach {
-            val tags = tagService.stringToTags(it.tags)
+            val tags = tagService.saveTags(it.tags)
 
             val meal = mealService.create(
                 Meal(

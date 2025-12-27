@@ -31,4 +31,9 @@ class UserService {
         // save the new password
         repository!!.save(user)
     }
+
+    fun getConnectedUser(connectedUser: Principal): Any {
+        val user = (connectedUser as UsernamePasswordAuthenticationToken).principal as User
+        return UserResponse(user.id!!, user.name)
+    }
 }

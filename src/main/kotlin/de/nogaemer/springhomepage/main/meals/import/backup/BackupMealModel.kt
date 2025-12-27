@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
 import de.nogaemer.springhomepage.main.meals.models.DoubleSerializer
 import de.nogaemer.springhomepage.main.images.Image
-import de.nogaemer.springhomepage.main.meals.models.Ingredient
+import de.nogaemer.springhomepage.main.meals.models.MealIngredient
+import de.nogaemer.springhomepage.main.meals.tags.Tag
 import de.nogaemer.springhomepage.main.notes.Note
 import de.nogaemer.springhomepage.main.ratings.Rating
 import lombok.AllArgsConstructor
@@ -24,7 +25,7 @@ data class BackupMealModel(
     @NotNull
     val name: String,
 
-    val ingredients: List<Ingredient>,
+    val ingredients: List<MealIngredient>,
 
     val instructions: List<String>,
 
@@ -46,7 +47,7 @@ data class BackupMealModel(
     val url: String = "",
 
     @NotNull
-    var tags: List<String> = emptyList(),
+    var tags: List<Tag> = emptyList(),
 
     @JsonSerialize(using = DoubleSerializer::class)
     var rating: Double = 0.0

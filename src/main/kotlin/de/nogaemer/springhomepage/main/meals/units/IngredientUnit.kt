@@ -1,30 +1,34 @@
-package de.nogaemer.springhomepage.main.meals.tags
+package de.nogaemer.springhomepage.main.meals.units
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
-import jakarta.validation.constraints.Pattern
 import org.bson.types.ObjectId
 import org.jetbrains.annotations.NotNull
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
 
-@Document(collection = "tags")
-data class Tag(
+@Document(collection = "units")
+data class IngredientUnit(
     @field:NotNull
-    val name: String,
+    val abbreviation: String,
 
     @field:NotNull
-    val type: String,
+    val abbreviationPlural: String,
 
     @field:NotNull
-    val description: String,
+    val fullName: String,
 
-    @field:Pattern(regexp = "^#([A-Fa-f0-9]{6})$")
     @field:NotNull
-    val color: String
+    val fullNamePlural: String,
+
+    @field:NotNull
+    val countable: Boolean,
+
+    @field:NotNull
+    val category: String,
+
+    @field:NotNull
+    val description: String
 ) {
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)

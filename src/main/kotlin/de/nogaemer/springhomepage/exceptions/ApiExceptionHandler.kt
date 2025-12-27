@@ -17,6 +17,7 @@ class ApiExceptionHandler {
 
         val code = when (exception) {
             is IdNotFoundException -> HttpStatus.NOT_FOUND
+            is UnitNotFoundException -> HttpStatus.NOT_FOUND
             is NotFoundException -> HttpStatus.NOT_FOUND
             is TagNotFoundException -> HttpStatus.NOT_FOUND
             is AlreadyReported -> HttpStatus.ALREADY_REPORTED
@@ -50,7 +51,7 @@ data class ErrorInfo(
     val timestamp: String = Instant.now().toString(),
     val status: Int,
     val error: String,
-    val trace: String,
     val message: String,
-    val path: String
+    val path: String,
+    val trace: String,
 )

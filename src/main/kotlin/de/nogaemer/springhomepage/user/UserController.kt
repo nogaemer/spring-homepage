@@ -3,6 +3,7 @@ package de.nogaemer.springhomepage.user
 import lombok.RequiredArgsConstructor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -24,5 +25,12 @@ class UserController {
     ): ResponseEntity<*> {
         service!!.changePassword(request!!, connectedUser!!)
         return ResponseEntity.ok().build<Any>()
+    }
+
+    @GetMapping("/me")
+    fun getConnectedUser(
+        connectedUser: Principal?
+    ): ResponseEntity<*> {
+        return ResponseEntity.ok(service!!.getConnectedUser(connectedUser!!))
     }
 }

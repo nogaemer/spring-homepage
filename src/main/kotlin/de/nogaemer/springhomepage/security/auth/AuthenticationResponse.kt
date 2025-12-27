@@ -13,10 +13,8 @@ import org.bson.types.ObjectId
 @AllArgsConstructor
 @NoArgsConstructor
 data class AuthenticationResponse(
-    @JsonProperty("access_token")
     val accessToken: String? = null,
 
-    @JsonProperty("refresh_token")
     val refreshToken: String? = null,
 
     @field:JsonSerialize(using = ToStringSerializer::class)

@@ -43,24 +43,27 @@ class RatingService(
 
 
     @Cacheable("ratings")
-    fun getRatingsByMealId(mealId: ObjectId): List<RatingResponse> {
-        val ratings = mutableListOf<RatingResponse>()
+    fun getRatingsByMealId(mealId: ObjectId): RatingResponse {
+        val ratings = mutableListOf<UserMealRatingResponse>()
 
         repository.findByMealId(mealId).forEach {
             val user = userRepository.findById(it.userId) ?: throw IdNotFoundException("User not found")
 
             ratings.add(
-                RatingResponse(
+                UserMealRatingResponse(
                     it,
                     UserResponse(
                         user.id!!,
-                        user.login
+                        user.name,
                     ),
-                    mealRepository.findById(it.mealId).orElseThrow { NotFoundException("Meal not found") }.rating
                 )
             )
         }
-        return ratings
+
+        return RatingResponse(
+            ratings,
+            mealRepository.findById(mealId).orElseThrow { NotFoundException("Meal not found") }.rating
+        )
     }
 
     override fun create(response: Rating): Rating {

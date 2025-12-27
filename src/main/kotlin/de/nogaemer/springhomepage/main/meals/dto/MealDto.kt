@@ -1,12 +1,14 @@
 package de.nogaemer.springhomepage.main.meals.dto
 
 import de.nogaemer.springhomepage.main.images.Image
-import de.nogaemer.springhomepage.main.meals.models.Ingredient
+import de.nogaemer.springhomepage.main.meals.models.MealIngredient
+import de.nogaemer.springhomepage.main.meals.tags.Tag
 import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor
 import org.jetbrains.annotations.NotNull
 import org.springframework.data.mongodb.core.mapping.Document
+import java.util.Collections.emptyList
 
 @Document(collection = "meals")
 @Data
@@ -16,7 +18,7 @@ data class MealDto(
     @NotNull
     val name: String,
 
-    val ingredients: List<Ingredient>,
+    val ingredients: List<MealIngredientDto>,
 
     val instructions: List<String>,
 
@@ -32,6 +34,6 @@ data class MealDto(
     val calories: Int,
 
     @NotNull
-    var tags: List<String> = emptyList()
+    var tags: MutableList<Tag> = emptyList()
 )
 

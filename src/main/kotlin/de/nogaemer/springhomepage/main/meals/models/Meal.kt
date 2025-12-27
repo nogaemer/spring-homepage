@@ -26,7 +26,7 @@ data class Meal(
     @NotNull
     val name: String,
 
-    val ingredients: List<Ingredient>,
+    val ingredients: List<MealIngredient>,
 
     val instructions: List<String>,
 

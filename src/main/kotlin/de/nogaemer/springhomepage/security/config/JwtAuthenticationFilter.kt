@@ -1,5 +1,7 @@
 package de.nogaemer.springhomepage.security.config
 
+import de.nogaemer.springhomepage.exceptions.AuthorisationRequired
+import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.security.token.Token
 import de.nogaemer.springhomepage.security.token.TokenRepository
 import jakarta.servlet.FilterChain
@@ -35,29 +37,43 @@ class JwtAuthenticationFilter(
             return
         }
         val authHeader = request.getHeader("Authorization")
-        val userEmail: String?
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response)
+            response.status = HttpServletResponse.SC_UNAUTHORIZED
+            response.writer.write("Authorization header is missing or invalid")
             return
         }
         val jwt = authHeader.substring(7)
-        userEmail = jwtService.extractUsername(jwt)
-        if (SecurityContextHolder.getContext().authentication == null) {
-
-            val userDetails = userDetailsService.loadUserByUsername(userEmail)
-            val isTokenValid = tokenRepository.findByToken(jwt)
-                ?.let { t: Token -> !t.expired && !t.revoked }
-                ?: false
-            if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {
-                val authToken = UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.authorities
-                )
-                authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
-                SecurityContextHolder.getContext().authentication = authToken
+        try {
+            val userEmail = jwtService.extractUsername(jwt)
+            if (SecurityContextHolder.getContext().authentication == null) {
+                val userDetails = userDetailsService.loadUserByUsername(userEmail)
+                val isTokenValid = tokenRepository.findByToken(jwt)
+                    ?.let { t: Token -> !t.expired && !t.revoked }
+                    ?: false
+                if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {
+                    val authToken = UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.authorities
+                    )
+                    authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
+                    SecurityContextHolder.getContext().authentication = authToken
+                } else {
+                    response.status = HttpServletResponse.SC_FORBIDDEN
+                    response.writer.write("Token is not valid or expired")
+                    return
+                }
             }
+            filterChain.doFilter(request, response)
+        } catch (e: AuthorisationRequired) {
+            response.status = HttpServletResponse.SC_FORBIDDEN
+            response.writer.write("Token is not valid or expired")
+        } catch (e: NotFoundException) {
+            response.status = HttpServletResponse.SC_FORBIDDEN
+            response.writer.write("Token not found")
+        } catch (e: Exception) {
+            response.status = HttpServletResponse.SC_UNAUTHORIZED
+            response.writer.write("Unauthorized: ${e.message}")
         }
-        filterChain.doFilter(request, response)
     }
 }

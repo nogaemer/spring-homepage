@@ -27,7 +27,7 @@ class RatingController(
     @GetMapping("/{id}")
     fun getRating(
         @PathVariable id: String
-    ): ResponseEntity<List<RatingResponse>> {
+    ): ResponseEntity<RatingResponse> {
         return ResponseEntity.ok(service.getRatingsByMealId(ObjectId(id)))
     }
 
