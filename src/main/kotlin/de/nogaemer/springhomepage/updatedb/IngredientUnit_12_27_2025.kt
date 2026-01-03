@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Service
 
 @Service
-class LinkIngredientUnit_12_27_2025(private val unitService: UnitService, private val mongoTemplate: MongoTemplate) {
+class IngredientUnit_12_27_2025(private val unitService: UnitService, private val mongoTemplate: MongoTemplate) {
 
     /**
      * Scans the `meals` collection for ingredients where `unit` is stored as a string

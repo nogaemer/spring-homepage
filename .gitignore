@@ -1,0 +1,47 @@
+# Gradle
+.gradle/
+build/
+
+# Keep the wrapper jar checked in
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ IDEA
+/.idea/
+*.iml
+*.iws
+
+# Kotlin/Java
+*.class
+*.jar
+*.war
+*.ear
+/out/
+
+# Logs
+*.log
+
+# Test results and build artifacts
+test-results/
+releases/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+
+# Environment / local properties
+.env
+local.properties
+
+# Others
+*.keystore
+*.tmp
+
+# Optional: ignore IDE-specific or user-specific files
+*.idea_modules
+
+# Allow explicit exceptions (uncomment to keep files tracked)
+# !/build/some-file-you-want-kept
+
