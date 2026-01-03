@@ -6,12 +6,13 @@ import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
 import de.nogaemer.springhomepage.main.meals.dto.MealDto
 import de.nogaemer.springhomepage.main.meals.dto.MealIngredientDto
 import de.nogaemer.springhomepage.main.meals.import.Chefkoch
+import de.nogaemer.springhomepage.main.meals.ingredients.IngredientService
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.models.MealImportMethod
 import de.nogaemer.springhomepage.main.meals.models.MealIngredient
-import de.nogaemer.springhomepage.main.ratings.RatingService
 import de.nogaemer.springhomepage.main.meals.tags.TagService
 import de.nogaemer.springhomepage.main.meals.units.UnitService
+import de.nogaemer.springhomepage.main.ratings.RatingService
 import org.bson.BsonNull
 import org.bson.Document
 import org.bson.types.ObjectId
@@ -24,7 +25,6 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation.*
 import org.springframework.data.mongodb.core.aggregation.AggregationResults
 import org.springframework.data.mongodb.core.query.Criteria
-import org.springframework.data.mongodb.core.query.isEqualTo
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import java.util.concurrent.CompletableFuture
@@ -35,6 +35,7 @@ class MealService(
     val ratingService: RatingService,
     val tagService: TagService,
     val unitService: UnitService,
+    val ingredientService: IngredientService,
     val applicationContext: ApplicationContext,
     private val mongoTemplate: MongoTemplate
 ) {
@@ -47,16 +48,16 @@ class MealService(
             val unitObj = dto.unit.let {
                 try {
                     unitService.findById(it.id)
-                } catch (ex: IllegalArgumentException) {
+                } catch (_: IllegalArgumentException) {
                     throw IdNotFoundException("Invalid unit id '${it}'")
                 }
             }
 
-            unitObj ?: throw UnitNotFoundException("Could not find unit for ingredient '${dto.name}'")
+            unitObj ?: throw UnitNotFoundException("Could not find unit for ingredient '${dto.ingredient.name}'")
 
             MealIngredient(
-                name = dto.name,
                 amount = dto.amount,
+                ingredient = dto.ingredient,
                 unit = unitObj
             )
         }
@@ -123,7 +124,7 @@ class MealService(
             when (tag) {
                 MealImportMethod.CHEFKOCH -> {
                     if (!url.contains("chefkoch.de")) throw IllegalArgumentException("Url is not from Chefkoch")
-                    val meal = Chefkoch(tagService, unitService).getMealFromUrl(url)
+                    val meal = Chefkoch(tagService, unitService, ingredientService).getMealFromUrl(url)
 
                     if (!save) return@supplyAsync meal
 
@@ -198,7 +199,7 @@ class MealService(
 
         try {
             userIds = _users?.split(",")?.map { user -> ObjectId(user) } ?: emptyList()
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid userIds")
         }
 

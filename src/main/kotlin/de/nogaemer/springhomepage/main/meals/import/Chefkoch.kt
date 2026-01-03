@@ -2,6 +2,8 @@ package de.nogaemer.springhomepage.main.meals.import
 
 import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
 import de.nogaemer.springhomepage.main.images.Image
+import de.nogaemer.springhomepage.main.meals.ingredients.Ingredient
+import de.nogaemer.springhomepage.main.meals.ingredients.IngredientService
 import de.nogaemer.springhomepage.main.meals.models.MealIngredient
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.tags.Tag
@@ -22,6 +24,7 @@ import kotlin.time.DurationUnit
 class Chefkoch(
     val tagService: TagService,
     val unitService: UnitService,
+    val ingredientService: IngredientService
 ) {
     private var page: Document? = null
     private var jsonData: JSONObject? = null
@@ -133,9 +136,29 @@ class Chefkoch(
 
             if (unit == null) throw UnitNotFoundException("Could not find unit for ingredient '$ingredient' (parsed unit: '$unitString')")
 
+            // Find the best matching ingredient using ingredientService
+            var ingredientEntity: Ingredient?
+            val ingredientCandidates = ingredientService.getIngredients(10, 0, name)
+            val ingredientQuery = name.trim()
+            ingredientEntity = ingredientCandidates.find { it.name.equals(ingredientQuery, true) }
+
+            if (ingredientEntity == null && ingredientQuery.isNotEmpty()) {
+                ingredientEntity = ingredientCandidates.find { it.name.startsWith(ingredientQuery, true) }
+            }
+            if (ingredientEntity == null && ingredientQuery.isNotEmpty()) {
+                ingredientEntity = ingredientCandidates.find { it.name.contains(ingredientQuery, true) }
+            }
+            if (ingredientEntity == null) {
+                ingredientEntity = ingredientCandidates.firstOrNull()
+            }
+            if (ingredientEntity == null) {
+                ingredientEntity = ingredientCandidates.firstOrNull()
+            }
+            if (ingredientEntity == null) throw UnitNotFoundException("Could not find ingredient for ingredient '$ingredient' (parsed unit: '$ingredientEntity')")
+
             mealIngredients.add(
                 MealIngredient(
-                    name = name,
+                    ingredient = ingredientEntity,
                     amount = amount,
                     unit = unit
                 )
@@ -249,7 +272,7 @@ class Chefkoch(
                 .getString("calories")
                 .replace(" kcal", "")
                 .toInt()
-        } catch (e: JSONException) {
+        } catch (_: JSONException) {
             0
         }
 
