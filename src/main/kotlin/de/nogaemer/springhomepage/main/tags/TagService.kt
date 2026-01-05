@@ -1,15 +1,15 @@
-package de.nogaemer.springhomepage.main.meals.tags
+package de.nogaemer.springhomepage.main.tags
 
-import de.nogaemer.springhomepage.main.meals.MealRepository
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import org.bson.Document
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort.*
+import org.springframework.data.domain.Sort.Order
+import org.springframework.data.domain.Sort.by
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation.*
 import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators
-import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.`when`
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service
 @Service
 class TagService(
     val tagRepository: TagRepository,
-    val mealRepository: MealRepository,
     val mongoTemplate: MongoTemplate
 ) {
 

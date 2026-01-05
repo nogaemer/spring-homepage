@@ -1,4 +1,4 @@
-package de.nogaemer.springhomepage.main.meals.ingredients
+package de.nogaemer.springhomepage.main.ingredients
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity

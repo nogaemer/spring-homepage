@@ -1,6 +1,5 @@
 package de.nogaemer.springhomepage.main.ratings
 
-import de.nogaemer.springhomepage.main.meals.BaseService
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.main.meals.MealRepository
@@ -8,12 +7,11 @@ import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.ratings.RatingService.RatingUpdateMethod.*
 import de.nogaemer.springhomepage.user.UserRepository
 import de.nogaemer.springhomepage.user.UserResponse
+import de.nogaemer.springhomepage.user.UserService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.CacheManager
-import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
-import org.springframework.cache.annotation.Caching
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -27,9 +25,16 @@ class RatingService(
     val mealRepository: MealRepository,
     val userRepository: UserRepository,
     val mongoTemplate: MongoTemplate,
+    userService: UserService,
     @Autowired
     private val cacheManager: CacheManager
-) : de.nogaemer.springhomepage.main.meals.BaseService<Rating, ObjectId>(repository, mealRepository, mongoTemplate, cacheManager) {
+) : de.nogaemer.springhomepage.main.meals.BaseService<Rating, ObjectId>(
+    repository,
+    mealRepository,
+    mongoTemplate,
+    userService,
+    cacheManager
+) {
 
     override fun findByUserId(userId: ObjectId, mealId: ObjectId): Rating? {
         return repository.findByUserIdAndMealId(userId, mealId)
@@ -103,18 +108,18 @@ class RatingService(
         when (method) {
             ADD -> {
                 newAverageRating =
-                    (meal.ratings.sumOf { it.rating }/ (meal.ratings.size).toDouble())
+                    (meal.ratings.sumOf { it.rating } / (meal.ratings.size).toDouble())
             }
 
             UPDATE -> {
                 newAverageRating =
-                    (meal.ratings.sumOf { it.rating } - originalRating!!.rating+ rating.rating) / (meal.ratings.size).toDouble()
+                    (meal.ratings.sumOf { it.rating } - originalRating!!.rating + rating.rating) / (meal.ratings.size).toDouble()
             }
 
             DELETE -> {
                 if (meal.ratings.size > 1) {
                     newAverageRating =
-                        (meal.ratings.sumOf { it.rating }/ (meal.ratings.size).toDouble())
+                        (meal.ratings.sumOf { it.rating } / (meal.ratings.size).toDouble())
                 }
             }
         }

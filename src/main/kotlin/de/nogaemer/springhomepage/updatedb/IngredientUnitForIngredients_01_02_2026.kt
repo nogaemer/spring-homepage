@@ -1,7 +1,7 @@
 package de.nogaemer.springhomepage.updatedb
 
-import de.nogaemer.springhomepage.main.meals.ingredients.Ingredient
-import de.nogaemer.springhomepage.main.meals.ingredients.IngredientService
+import de.nogaemer.springhomepage.main.ingredients.Ingredient
+import de.nogaemer.springhomepage.main.ingredients.IngredientService
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate

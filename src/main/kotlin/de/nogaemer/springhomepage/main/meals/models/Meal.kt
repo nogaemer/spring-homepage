@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
 import de.nogaemer.springhomepage.main.images.Image
 import de.nogaemer.springhomepage.main.notes.Note
 import de.nogaemer.springhomepage.main.ratings.Rating
-import de.nogaemer.springhomepage.main.meals.tags.Tag
+import de.nogaemer.springhomepage.main.tags.Tag
 import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor

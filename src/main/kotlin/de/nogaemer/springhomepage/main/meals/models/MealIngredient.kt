@@ -1,7 +1,7 @@
 package de.nogaemer.springhomepage.main.meals.models
 
-import de.nogaemer.springhomepage.main.meals.ingredients.Ingredient
-import de.nogaemer.springhomepage.main.meals.units.IngredientUnit
+import de.nogaemer.springhomepage.main.ingredients.Ingredient
+import de.nogaemer.springhomepage.main.units.IngredientUnit
 import org.springframework.data.mongodb.core.mapping.DocumentReference
 
 data class MealIngredient(
@@ -12,5 +12,5 @@ data class MealIngredient(
     val ingredient: Ingredient? = null,
 
     @DocumentReference
-    val unit: IngredientUnit
+    val unit: IngredientUnit?
 )

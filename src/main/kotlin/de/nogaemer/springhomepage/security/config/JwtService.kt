@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Service
-import java.net.URI
 import java.security.Key
 import java.util.*
 import java.util.function.Function
@@ -98,7 +97,7 @@ class JwtService {
         return extractClaim(token) { obj: Claims -> obj.expiration }
     }
 
-    private fun extractAllClaims(token: String?): Claims {
+    fun extractAllClaims(token: String?): Claims {
         try {
             return Jwts
                 .parserBuilder()
@@ -106,7 +105,7 @@ class JwtService {
                 .build()
                 .parseClaimsJws(token)
                 .body
-        } catch (e: ExpiredJwtException) {
+        } catch (_: ExpiredJwtException) {
             tokenRepository!!.delete(tokenRepository.findByToken(token!!) ?:
             throw NotFoundException("Token not found"))
 

@@ -3,16 +3,24 @@ package de.nogaemer.springhomepage.main.meals
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
+import de.nogaemer.springhomepage.main.images.Image
+import de.nogaemer.springhomepage.main.ingredients.Ingredient
+import de.nogaemer.springhomepage.main.ingredients.IngredientService
+import de.nogaemer.springhomepage.main.meals.dto.MealCardDto
 import de.nogaemer.springhomepage.main.meals.dto.MealDto
 import de.nogaemer.springhomepage.main.meals.dto.MealIngredientDto
 import de.nogaemer.springhomepage.main.meals.import.Chefkoch
-import de.nogaemer.springhomepage.main.meals.ingredients.IngredientService
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.models.MealImportMethod
 import de.nogaemer.springhomepage.main.meals.models.MealIngredient
-import de.nogaemer.springhomepage.main.meals.tags.TagService
-import de.nogaemer.springhomepage.main.meals.units.UnitService
+import de.nogaemer.springhomepage.main.notes.Note
+import de.nogaemer.springhomepage.main.ratings.Rating
 import de.nogaemer.springhomepage.main.ratings.RatingService
+import de.nogaemer.springhomepage.main.tags.Tag
+import de.nogaemer.springhomepage.main.tags.TagService
+import de.nogaemer.springhomepage.main.units.IngredientUnit
+import de.nogaemer.springhomepage.main.units.UnitService
+import de.nogaemer.springhomepage.main.utils.AggregationUtils
 import org.bson.BsonNull
 import org.bson.Document
 import org.bson.types.ObjectId
@@ -23,6 +31,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.data.domain.Sort
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation.*
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation
 import org.springframework.data.mongodb.core.aggregation.AggregationResults
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.scheduling.annotation.Async
@@ -64,18 +73,120 @@ class MealService(
     }
 
     @Cacheable("allMeals")
-    fun findAll(): List<Meal> {
-        return repository.findAll()
-    }
+    fun findAll(): List<MealCardDto> {
+        val aggregation = newAggregation(
+            *AggregationUtils.getMealCardProjectionStages().toTypedArray()
+        )
 
-    @Cacheable("meals")
+        return mongoTemplate.aggregate(aggregation, "meals", MealCardDto::class.java).mappedResults
+    }
+    // ... existing methods ...
+
     fun findById(id: ObjectId): Meal {
-        return repository.findById(id).orElseThrow { IllegalArgumentException("Meal with id $id not found") }
+        val matchStage = match(Criteria.where("_id").`is`(id))
+
+        val lookupTags = lookup("tags", "tags", "_id", "tags")
+        val lookupRatings = lookup("ratings", "ratings", "_id", "ratings")
+        val lookupNotes = lookup("notes", "notes", "_id", "notes")
+
+        val lookupIngredients = lookup("ingredients", "ingredients.ingredient", "_id", "resolvedIngredients")
+        val lookupUnits = lookup("units", "ingredients.unit", "_id", "resolvedUnits")
+
+        val projectStage = project()
+            .and("_id").`as`("id")
+            .and("name").`as`("name")
+            .and("instructions").`as`("instructions")
+            .and("images").`as`("images")
+            .and("difficulty").`as`("difficulty")
+            .and("time").`as`("time")
+            .and("portions").`as`("portions")
+            .and("calories").`as`("calories")
+            .and("url").`as`("url")
+            .and("tags").`as`("tags")
+            .and("ratings").`as`("ratings")
+            .and("notes").`as`("notes")
+            .and("rating").`as`("rating")
+            .and {
+                Document(
+                    "\$map", Document()
+                        .append("input", "\$ingredients")
+                        .append("as", "item")
+                        .append(
+                            "in", Document()
+                                .append("name", "\$\$item.name")
+                                .append("amount", "\$\$item.amount")
+                                .append(
+                                    "ingredient",
+                                    AggregationUtils.lookupObject("resolvedIngredients", "ingredient")
+                                )
+                                .append(
+                                    "unit",
+                                    AggregationUtils.lookupObject("resolvedUnits", "unit")
+                                )
+                        )
+                )
+            }.`as`("ingredients")
+
+        val aggregation = newAggregation(
+            matchStage,
+            lookupTags,
+            lookupRatings,
+            lookupNotes,
+            lookupIngredients,
+            lookupUnits,
+            projectStage
+        )
+
+        // Use the Projection class instead of Meal::class.java to bypass @DocumentReference logic
+        val results = mongoTemplate.aggregate(aggregation, "meals", MealProjection::class.java)
+        val projection = results.uniqueMappedResult ?: throw IllegalArgumentException("Meal with id $id not found")
+
+        // Map Projection back to Meal
+        return Meal(
+            name = projection.name,
+            ingredients = projection.ingredients.map {
+                MealIngredient(
+                    it.name,
+                    it.amount,
+                    Ingredient(
+                        it.ingredient?.name ?: throw IllegalArgumentException("Ingredient with id ${it.ingredient?.id} not found"),
+                        it.ingredient.category,
+                    ),
+                    it.unit)
+            },
+            instructions = projection.instructions,
+            images = projection.images,
+            difficulty = projection.difficulty,
+            time = projection.time,
+            portions = projection.portions,
+            calories = projection.calories,
+            url = projection.url,
+            tags = projection.tags.toMutableList(),
+            rating = projection.rating
+        ).apply {
+            this.id = projection.id
+            this.ratings = projection.ratings
+            this.notes = projection.notes
+        }
     }
 
-    fun searchByName(name: String?): List<Meal>? {
-        if (name == "") return self().findAll()
-        return repository.searchByName(name)
+
+    fun searchByName(name: String?): List<MealCardDto> {
+        if (name.isNullOrEmpty()) return self().findAll()
+
+        val desiredName = name
+
+        val matchName = match(Criteria.where("name").regex(desiredName, "i"))
+
+        val stages = mutableListOf<AggregationOperation>()
+        stages.add(matchName)
+        stages.addAll(AggregationUtils.getMealCardProjectionStages())
+
+        val aggregation = newAggregation(
+            *stages.toTypedArray()
+        )
+
+        return mongoTemplate.aggregate(aggregation, "meals", MealCardDto::class.java).mappedResults
     }
 
     @Caching(
@@ -190,7 +301,7 @@ class MealService(
         _users: String?,
         _tags: String?,
         time: Int?
-    ): List<Meal> {
+    ): List<MealCardDto> {
         val desiredTags = _tags?.split(",") ?: emptyList()
         val desiredName = name ?: ""
         val minTime = 0
@@ -285,17 +396,56 @@ class MealService(
         }
 
         // Define the aggregation pipeline
+        val stages = mutableListOf<AggregationOperation>()
+        stages.add(matchNameAndTime)
+        stages.add(lookupRatings)
+        stages.add(filterUserRatingsByUserId)
+        stages.add(addFieldsOperation)
+        stages.add(sortByAverageRating)
+        stages.addAll(AggregationUtils.getMealCardProjectionStages())
+
         val aggregation = newAggregation(
-            matchNameAndTime,
-            lookupRatings,
-            filterUserRatingsByUserId,
-            addFieldsOperation,
-            sortByAverageRating
+            *stages.toTypedArray()
         )
 
         // Execute the aggregation
-        val results: AggregationResults<Meal> = mongoTemplate.aggregate(aggregation, "meals", Meal::class.java)
+        val results: AggregationResults<MealCardDto> =
+            mongoTemplate.aggregate(aggregation, "meals", MealCardDto::class.java)
 
         return results.mappedResults
     }
 }
+
+// Private projection classes to handle mapping without @DocumentReference
+private data class MealProjection(
+    val id: ObjectId,
+    val name: String,
+    val instructions: List<String>,
+    val images: List<Image>?,
+    val difficulty: String,
+    val time: Long,
+    val portions: Int,
+    val calories: Int,
+    val url: String,
+    val tags: List<Tag>,
+    val ratings: List<Rating>,
+    val notes: List<Note>,
+    val rating: Double,
+    val ingredients: List<MealIngredientProjection>
+)
+
+private data class MealIngredientProjection(
+    val name: String,
+    val amount: String,
+    val ingredient: IngredientProjection?, // No @DocumentReference here
+    val unit: IngredientUnit?    // No @DocumentReference here
+)
+
+private data class IngredientProjection(
+    var id: ObjectId,
+    val name: String,
+    val category: String,
+    val unit: ObjectId
+)
+
+

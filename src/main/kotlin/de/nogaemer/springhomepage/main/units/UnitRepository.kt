@@ -1,4 +1,4 @@
-package de.nogaemer.springhomepage.main.meals.units
+package de.nogaemer.springhomepage.main.units
 
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.repository.MongoRepository

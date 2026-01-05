@@ -2,9 +2,9 @@ package de.nogaemer.springhomepage.main.meals.import.backup
 
 import de.nogaemer.springhomepage.main.meals.MealService
 import de.nogaemer.springhomepage.main.meals.models.Meal
-import de.nogaemer.springhomepage.main.meals.tags.TagService
 import de.nogaemer.springhomepage.main.notes.NoteService
 import de.nogaemer.springhomepage.main.ratings.RatingService
+import de.nogaemer.springhomepage.main.tags.TagService
 import org.springframework.stereotype.Service
 
 @Service

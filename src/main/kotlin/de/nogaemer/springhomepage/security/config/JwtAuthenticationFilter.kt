@@ -2,7 +2,6 @@ package de.nogaemer.springhomepage.security.config
 
 import de.nogaemer.springhomepage.exceptions.AuthorisationRequired
 import de.nogaemer.springhomepage.exceptions.NotFoundException
-import de.nogaemer.springhomepage.security.token.Token
 import de.nogaemer.springhomepage.security.token.TokenRepository
 import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletException
@@ -12,7 +11,6 @@ import lombok.RequiredArgsConstructor
 import org.springframework.lang.NonNull
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -22,7 +20,6 @@ import java.io.IOException
 @RequiredArgsConstructor
 class JwtAuthenticationFilter(
     val jwtService: JwtService,
-    val userDetailsService: UserDetailsService,
     val tokenRepository: TokenRepository
 ) : OncePerRequestFilter() {
 
@@ -44,20 +41,31 @@ class JwtAuthenticationFilter(
         }
         val jwt = authHeader.substring(7)
         try {
-            val userEmail = jwtService.extractUsername(jwt)
+            // Optimization: Parse token once to get claims and validate signature/expiration
+            val claims = jwtService.extractAllClaims(jwt)
+            val userEmail = claims.subject
+
             if (SecurityContextHolder.getContext().authentication == null) {
-                val userDetails = userDetailsService.loadUserByUsername(userEmail)
-                val isTokenValid = tokenRepository.findByToken(jwt)
-                    ?.let { t: Token -> !t.expired && !t.revoked }
-                    ?: false
-                if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {
-                    val authToken = UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.authorities
-                    )
-                    authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
-                    SecurityContextHolder.getContext().authentication = authToken
+                // Optimization: Fetch token first to avoid double user fetch (once by username, once by DBRef in token)
+                val storedToken = tokenRepository.findByToken(jwt)
+
+                if (storedToken != null && !storedToken.expired && !storedToken.revoked) {
+                    val user = storedToken.user
+                    // Verify the token belongs to the user
+                    // Note: Signature and expiration are already validated by extractAllClaims
+                    if (user.username == userEmail) {
+                        val authToken = UsernamePasswordAuthenticationToken(
+                            user,
+                            null,
+                            user.authorities
+                        )
+                        authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
+                        SecurityContextHolder.getContext().authentication = authToken
+                    } else {
+                        response.status = HttpServletResponse.SC_FORBIDDEN
+                        response.writer.write("Token is not valid or expired")
+                        return
+                    }
                 } else {
                     response.status = HttpServletResponse.SC_FORBIDDEN
                     response.writer.write("Token is not valid or expired")
@@ -65,10 +73,10 @@ class JwtAuthenticationFilter(
                 }
             }
             filterChain.doFilter(request, response)
-        } catch (e: AuthorisationRequired) {
+        } catch (_: AuthorisationRequired) {
             response.status = HttpServletResponse.SC_FORBIDDEN
             response.writer.write("Token is not valid or expired")
-        } catch (e: NotFoundException) {
+        } catch (_: NotFoundException) {
             response.status = HttpServletResponse.SC_FORBIDDEN
             response.writer.write("Token not found")
         } catch (e: Exception) {
