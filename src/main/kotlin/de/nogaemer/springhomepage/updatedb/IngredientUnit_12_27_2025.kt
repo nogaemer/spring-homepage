@@ -1,11 +1,11 @@
 package de.nogaemer.springhomepage.updatedb
 
-import de.nogaemer.springhomepage.main.meals.units.IngredientUnit as UnitModel
-import de.nogaemer.springhomepage.main.meals.units.UnitService
+import de.nogaemer.springhomepage.main.units.UnitService
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Service
+import de.nogaemer.springhomepage.main.units.IngredientUnit as UnitModel
 
 @Service
 class IngredientUnit_12_27_2025(private val unitService: UnitService, private val mongoTemplate: MongoTemplate) {

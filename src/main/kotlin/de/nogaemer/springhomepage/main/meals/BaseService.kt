@@ -4,7 +4,7 @@ import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.user.Role
-import de.nogaemer.springhomepage.user.User
+import de.nogaemer.springhomepage.user.UserService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.CacheManager
@@ -12,35 +12,32 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.data.mongodb.repository.MongoRepository
-import org.springframework.security.core.context.SecurityContextHolder
-import java.util.concurrent.ConcurrentMap
 
-abstract class BaseService<T : de.nogaemer.springhomepage.main.meals.EntityWithMealId, ID : Any>(
+abstract class BaseService<T : EntityWithMealId, ID : Any>(
     private val repository: MongoRepository<T, ID>,
-    private val mealRepository: de.nogaemer.springhomepage.main.meals.MealRepository,
+    private val mealRepository: MealRepository,
     private val mongoTemplate: MongoTemplate,
-    @Autowired
-    private val cacheManager: CacheManager
+    private val userService: UserService,
+
+    @Autowired private val cacheManager: CacheManager
 ) {
 
     open fun create(response: T): T {
-        val meal = mealRepository.findById(response.mealId)
-            .orElseThrow { throw IdNotFoundException("Meal not found") }
+        val meal = mealRepository.findById(response.mealId).orElseThrow { throw IdNotFoundException("Meal not found") }
 
-        if (response.userId == null)
-            response.userId = de.nogaemer.springhomepage.main.meals.getCurrentUser().id
+        if (response.userId == null) response.userId = userService.getCurrentUser().id
 
         findByUserId(response.userId!!, meal.id!!)?.let {
-            if (it.mealId == response.mealId)
-                throw AlreadyReported("User already submitted this type of entity for this meal", it)
+            if (it.mealId == response.mealId) throw AlreadyReported(
+                "User already submitted this type of entity for this meal",
+                it
+            )
         }
 
         val savedEntity = repository.save(response)
 
-        mongoTemplate.update(Meal::class.java)
-            .matching(Criteria.where("id").`is`(savedEntity.mealId))
-            .apply(Update().push(entityFieldName, savedEntity))
-            .first()
+        mongoTemplate.update(Meal::class.java).matching(Criteria.where("id").`is`(savedEntity.mealId))
+            .apply(Update().push(entityFieldName, savedEntity)).first()
 
         cacheManager.getCache("meals")!!.put(savedEntity.mealId, meal)
         cacheManager.getCache("allMeals")!!.clear()
@@ -49,13 +46,12 @@ abstract class BaseService<T : de.nogaemer.springhomepage.main.meals.EntityWithM
     }
 
     open fun delete(id: ID, entity: T): T {
-        if (de.nogaemer.springhomepage.main.meals.getCurrentUser().id != entity.userId && de.nogaemer.springhomepage.main.meals.getCurrentUser().role != Role.ADMIN)
-            throw RuntimeException("You are not allowed to delete this entity")
+        if (userService.getCurrentUser().id != entity.userId && userService.getCurrentUser().role != Role.ADMIN) throw RuntimeException(
+            "You are not allowed to delete this entity"
+        )
 
-        mongoTemplate.update(Meal::class.java)
-            .matching(Criteria.where("id").`is`(entity.mealId))
-            .apply(Update().pull(entityFieldName, entity))
-            .first()
+        mongoTemplate.update(Meal::class.java).matching(Criteria.where("id").`is`(entity.mealId))
+            .apply(Update().pull(entityFieldName, entity)).first()
 
         repository.deleteById(id)
 
@@ -72,14 +68,6 @@ abstract class BaseService<T : de.nogaemer.springhomepage.main.meals.EntityWithM
 interface EntityWithMealId {
     var userId: ObjectId?
     val mealId: ObjectId
-}
-
-fun getCurrentUser(): User {
-    val authentication = SecurityContextHolder.getContext().authentication
-    if (authentication != null && authentication.isAuthenticated) {
-        return authentication.principal as User
-    }
-    throw RuntimeException("User not found")
 }
 //
 //@Component

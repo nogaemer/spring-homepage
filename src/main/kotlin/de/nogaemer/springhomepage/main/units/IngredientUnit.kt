@@ -1,4 +1,4 @@
-package de.nogaemer.springhomepage.main.meals.units
+package de.nogaemer.springhomepage.main.units
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer

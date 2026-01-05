@@ -1,6 +1,9 @@
 package de.nogaemer.springhomepage.main.meals
 
+import de.nogaemer.springhomepage.main.meals.dto.MealCardDto
 import de.nogaemer.springhomepage.main.meals.dto.MealDto
+import de.nogaemer.springhomepage.main.meals.dto.UnifiedMealSearchRequest
+import de.nogaemer.springhomepage.main.meals.dto.UnifiedMealSearchResponse
 import de.nogaemer.springhomepage.main.meals.import.MealImportUrl
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.models.MealImportMethod
@@ -12,19 +15,21 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/meals")
-class MealController {
-    @Autowired
-    private val service: MealService? = null
+class MealController(
+    private val unifiedMealSearchService: UnifiedMealSearchService, private val service: MealService
+) {
 
 
-    @GetMapping
-    fun getMealsByName(
-        @RequestParam(
-            value = "name",
-            defaultValue = ""
-        ) name: String
-    ): ResponseEntity<List<Meal>> {
-        return ResponseEntity<List<Meal>>(service?.searchByName(name), HttpStatus.OK)
+    @PostMapping("/search")
+    fun searchMeals(
+        @RequestBody request: UnifiedMealSearchRequest
+    ): ResponseEntity<UnifiedMealSearchResponse> {
+        return ResponseEntity.ok(unifiedMealSearchService.search(request))
+    }
+
+    @GetMapping("/all")
+    fun getAllMeals(): ResponseEntity<List<MealCardDto>> {
+        return ResponseEntity<List<MealCardDto>>(service.findAll(), HttpStatus.OK)
     }
 
     @GetMapping("/{id}")
@@ -33,36 +38,32 @@ class MealController {
     ): ResponseEntity<Meal> {
         id ?: throw IllegalArgumentException("Id is null")
 
-        val response = service!!.findById(id)
+        val response = service.findById(id)
         return ResponseEntity.ok(response)
     }
 
     @GetMapping("/byFilter")
     fun getFiltertMeals(
-        @RequestParam name: String?,
-        @RequestParam users: String?,
-        @RequestParam tags: String?,
-        @RequestParam time: Int?
-    ): ResponseEntity<List<Meal>> {
-        val response = service!!.filterMeals(name, users, tags, time)
+        @RequestParam name: String?, @RequestParam users: String?, @RequestParam tags: String?, @RequestParam time: Int?
+    ): ResponseEntity<List<MealCardDto>> {
+        val response = service.filterMeals(name, users, tags, time)
         return ResponseEntity.ok(response)
     }
 
     @PutMapping("/{id}")
     fun updateMeal(
-        @PathVariable id: ObjectId?,
-        @RequestBody meal: MealDto
+        @PathVariable id: ObjectId?, @RequestBody meal: MealDto
     ): ResponseEntity<Meal> {
         id ?: throw IllegalArgumentException("Id is null")
 
-        return ResponseEntity<Meal>(service!!.update(id, meal), HttpStatus.OK)
+        return ResponseEntity<Meal>(service.update(id, meal), HttpStatus.OK)
     }
 
     @PostMapping
     fun createMeal(
         @RequestBody meal: MealDto
     ): ResponseEntity<Meal> {
-        return ResponseEntity<Meal>(service!!.create(meal), HttpStatus.CREATED)
+        return ResponseEntity<Meal>(service.create(meal), HttpStatus.CREATED)
     }
 
     @DeleteMapping("/{id}")
@@ -71,7 +72,7 @@ class MealController {
     ): ResponseEntity<Void> {
         id ?: throw IllegalArgumentException("Id is null")
 
-        service!!.deleteById(id)
+        service.deleteById(id)
         return ResponseEntity(HttpStatus.NO_CONTENT)
     }
 }

@@ -2,14 +2,14 @@ package de.nogaemer.springhomepage.main.meals.import
 
 import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
 import de.nogaemer.springhomepage.main.images.Image
-import de.nogaemer.springhomepage.main.meals.ingredients.Ingredient
-import de.nogaemer.springhomepage.main.meals.ingredients.IngredientService
-import de.nogaemer.springhomepage.main.meals.models.MealIngredient
+import de.nogaemer.springhomepage.main.ingredients.Ingredient
+import de.nogaemer.springhomepage.main.ingredients.IngredientService
 import de.nogaemer.springhomepage.main.meals.models.Meal
-import de.nogaemer.springhomepage.main.meals.tags.Tag
-import de.nogaemer.springhomepage.main.meals.tags.TagService
-import de.nogaemer.springhomepage.main.meals.units.IngredientUnit
-import de.nogaemer.springhomepage.main.meals.units.UnitService
+import de.nogaemer.springhomepage.main.meals.models.MealIngredient
+import de.nogaemer.springhomepage.main.tags.Tag
+import de.nogaemer.springhomepage.main.tags.TagService
+import de.nogaemer.springhomepage.main.units.IngredientUnit
+import de.nogaemer.springhomepage.main.units.UnitService
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONException

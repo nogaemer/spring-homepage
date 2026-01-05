@@ -1,15 +1,15 @@
-package de.nogaemer.springhomepage.main.meals.units
+package de.nogaemer.springhomepage.main.units
 
-import de.nogaemer.springhomepage.main.meals.MealRepository
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort.*
+import org.springframework.data.domain.Sort.Order
+import org.springframework.data.domain.Sort.by
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation.*
 import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators
-import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.`when`
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.stereotype.Service
 import kotlin.jvm.optionals.getOrNull
@@ -18,7 +18,6 @@ import kotlin.jvm.optionals.getOrNull
 @Service
 class UnitService(
     val unitRepository: UnitRepository,
-    val mealRepository: MealRepository,
     val mongoTemplate: MongoTemplate
 ) {
 
@@ -132,7 +131,7 @@ class UnitService(
     }
 
     fun findById(objectId: ObjectId): IngredientUnit? {
-        return unitRepository.findById(objectId).getOrNull(0);
+        return unitRepository.findById(objectId).getOrNull(0)
     }
 
     fun findById(objectId: String): IngredientUnit? {

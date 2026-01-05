@@ -3,6 +3,7 @@ package de.nogaemer.springhomepage.user
 import lombok.RequiredArgsConstructor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.security.Principal
@@ -35,5 +36,13 @@ class UserService {
     fun getConnectedUser(connectedUser: Principal): Any {
         val user = (connectedUser as UsernamePasswordAuthenticationToken).principal as User
         return UserResponse(user.id!!, user.name)
+    }
+
+    fun getCurrentUser(): User {
+        val authentication = SecurityContextHolder.getContext().authentication
+        if (authentication != null && authentication.isAuthenticated) {
+            return authentication.principal as User
+        }
+        throw RuntimeException("User not found")
     }
 }

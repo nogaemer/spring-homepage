@@ -1,11 +1,11 @@
 package de.nogaemer.springhomepage.main.notes
 
-import de.nogaemer.springhomepage.main.meals.BaseService
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.main.meals.MealRepository
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.user.UserRepository
 import de.nogaemer.springhomepage.user.UserResponse
+import de.nogaemer.springhomepage.user.UserService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.CacheManager
@@ -19,9 +19,17 @@ class NoteService(
     mealRepository: MealRepository,
     val userRepository: UserRepository,
     mongoTemplate: MongoTemplate,
+    userService: UserService,
+
     @Autowired
     cacheManager: CacheManager
-) : de.nogaemer.springhomepage.main.meals.BaseService<Note, ObjectId>(repository, mealRepository, mongoTemplate, cacheManager) {
+) : de.nogaemer.springhomepage.main.meals.BaseService<Note, ObjectId>(
+    repository,
+    mealRepository,
+    mongoTemplate,
+    userService,
+    cacheManager
+) {
 
     override fun findByUserId(userId: ObjectId, mealId: ObjectId): Note? {
         return repository.findByUserIdAndMealId(userId, mealId)
@@ -37,8 +45,7 @@ class NoteService(
         val ratings = mutableListOf<NoteResponse>()
 
         repository.findByMealId(mealId).forEach {
-            val user = userRepository.findById(it.userId)?:
-            throw IdNotFoundException("User not found")
+            val user = userRepository.findById(it.userId) ?: throw IdNotFoundException("User not found")
 
             ratings.add(
                 NoteResponse(

@@ -1,14 +1,15 @@
-package de.nogaemer.springhomepage.main.meals.ingredients
+package de.nogaemer.springhomepage.main.ingredients
 
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort.*
+import org.springframework.data.domain.Sort.Order
+import org.springframework.data.domain.Sort.by
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation.*
 import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators
-import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.`when`
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.stereotype.Service
 import kotlin.jvm.optionals.getOrNull

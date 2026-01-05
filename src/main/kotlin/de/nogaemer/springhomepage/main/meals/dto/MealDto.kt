@@ -1,8 +1,7 @@
 package de.nogaemer.springhomepage.main.meals.dto
 
 import de.nogaemer.springhomepage.main.images.Image
-import de.nogaemer.springhomepage.main.meals.models.MealIngredient
-import de.nogaemer.springhomepage.main.meals.tags.Tag
+import de.nogaemer.springhomepage.main.tags.Tag
 import lombok.AllArgsConstructor
 import lombok.Data
 import lombok.NoArgsConstructor
