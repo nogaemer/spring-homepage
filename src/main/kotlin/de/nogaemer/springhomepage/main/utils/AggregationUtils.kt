@@ -62,6 +62,8 @@ object AggregationUtils {
                     .append("images", 1)
                     .append("instructions", 1)
                     .append("matchingRatio", 1)
+                    .append("relevanceScore", 1)
+
                     .append(
                         ingredientsField, Document(
                             "\$map", Document()

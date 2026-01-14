@@ -19,20 +19,20 @@ data class UnifiedMealSearchRequest(
     // ratings filter (optional)
     val userIds: List<String>? = null,      // filter ratings to these users
     val minUserRating: Double? = null,         // e.g. 4
-    val requireUserRatingMatch: Boolean = false, // only keep meals with remaining ratings after filtering
+    val requireUserRating: Boolean = false, // only keep meals with remaining ratings after filtering
 
     // sorting/paging
-    val sortBy: SortBy = SortBy.RATING,
+    val sortBy: SortBy = SortBy.RELEVANCE,
     val limit: Int = 30,
     val skip: Long = 0,
 ) {
-    enum class SortBy {
-        RELEVANCE,          // name token score
-        RATING,             // meal.rating
-        TIME_ASC,
-        TIME_DESC,
-        INGREDIENT_MATCH,   // matchingRatio
-        USER_AVG_RATING     // averageUserRating
+    enum class SortBy(val value: String = "") {
+        RELEVANCE("Relevanz"),          // name token score
+        RATING("Bewertung"),            // meal.rating
+        TIME_ASC("Zeit aufsteigend"),
+        TIME_DESC("Zeit absteigend"),
+        INGREDIENT_MATCH("Zutatenübereinstimmung"),   // matchingRatio
+        USER_AVG_RATING("Benutzerdurchschnittsbewertung")      // averageUserRating
     }
 }
 

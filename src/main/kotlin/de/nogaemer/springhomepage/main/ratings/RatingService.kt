@@ -1,18 +1,18 @@
 package de.nogaemer.springhomepage.main.ratings
 
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
-import de.nogaemer.springhomepage.exceptions.NotFoundException
 import de.nogaemer.springhomepage.main.meals.MealRepository
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.ratings.RatingService.RatingUpdateMethod.*
-import de.nogaemer.springhomepage.user.UserRepository
-import de.nogaemer.springhomepage.user.UserResponse
 import de.nogaemer.springhomepage.user.UserService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cache.CacheManager
-import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.aggregation.Aggregation
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators
+import org.springframework.data.mongodb.core.aggregation.MergeOperation
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
@@ -23,9 +23,9 @@ import org.springframework.stereotype.Service
 class RatingService(
     val repository: RatingRepository,
     val mealRepository: MealRepository,
-    val userRepository: UserRepository,
+    val ratingRepository: RatingRepository,
     val mongoTemplate: MongoTemplate,
-    userService: UserService,
+    val userService: UserService,
     @Autowired
     private val cacheManager: CacheManager
 ) : de.nogaemer.springhomepage.main.meals.BaseService<Rating, ObjectId>(
@@ -47,37 +47,34 @@ class RatingService(
     }
 
 
-    @Cacheable("ratings")
     fun getRatingsByMealId(mealId: ObjectId): RatingResponse {
-        val ratings = mutableListOf<UserMealRatingResponse>()
 
-        repository.findByMealId(mealId).forEach {
-            val user = userRepository.findById(it.userId) ?: throw IdNotFoundException("User not found")
+        val stages = mutableListOf<AggregationOperation>()
+        stages += Aggregation.match(Criteria.where("_id").`is`(mealId))
+        stages += Aggregation.project("ratings", "_id").and("rating").`as`("mealRating")
+        stages += Aggregation.lookup("ratings", "ratings", "_id", "rating")
+        stages += Aggregation.unwind("rating")
+        stages += Aggregation.lookup("users", "rating.userId", "_id", "user")
+        stages += Aggregation.unwind("user", true)
+        stages += Aggregation.group("_id").push("\$\$ROOT").`as`("ratings")
+        stages += Aggregation.addFields().addField("mealRating")
+            .withValue(ArrayOperators.ArrayElemAt.arrayOf("\$ratings.mealRating").elementAt(0))
+            .build()
 
-            ratings.add(
-                UserMealRatingResponse(
-                    it,
-                    UserResponse(
-                        user.id!!,
-                        user.name,
-                    ),
-                )
-            )
-        }
+        val pipeline = Aggregation.newAggregation(*stages.toTypedArray())
+        println("Aggregation pipeline: $pipeline")
+        val results = mongoTemplate.aggregate(pipeline, "meals", RatingResponse::class.java).mappedResults
 
-        return RatingResponse(
-            ratings,
-            mealRepository.findById(mealId).orElseThrow { NotFoundException("Meal not found") }.rating
-        )
+        return results[0]
     }
 
     override fun create(response: Rating): Rating {
         val rating = super.create(response)
 
-        val meal = mealRepository.findById(response.mealId)
-            .orElseThrow { throw IdNotFoundException("Meal not found") }
+        val mealRatings = ratingRepository.findByMealId(rating.mealId)
+            .ifEmpty { throw IdNotFoundException("Meal not found") }
 
-        updateRatings(meal, rating, ADD)
+        updateRatings(mealRatings, rating, ADD)
 
         cacheManager.getCache("ratings")!!.evict(rating.mealId)
         return rating
@@ -91,10 +88,10 @@ class RatingService(
     }
 
     override fun delete(id: ObjectId, rating: Rating): Rating {
-        val meal = mealRepository.findById(rating.mealId)
-            .orElseThrow { throw IdNotFoundException("Meal not found") }
+        val mealRatings = ratingRepository.findByMealId(rating.mealId)
+            .ifEmpty { throw IdNotFoundException("Meal not found") }
 
-        updateRatings(meal, rating, DELETE)
+        updateRatings(mealRatings, rating, DELETE)
 
         super.delete(id, rating)
 
@@ -102,24 +99,48 @@ class RatingService(
         return rating
     }
 
-    fun updateRatings(meal: Meal, rating: Rating, method: RatingUpdateMethod = ADD, originalRating: Rating? = null) {
+    fun syncAverageRatings(rating: Rating) {
+        val stages = mutableListOf<AggregationOperation>()
+        stages += Aggregation.match(Criteria.where("mealId").`is`(rating.mealId))
+        stages += Aggregation.group("mealId").avg("rating").`as`("rating")
+        stages += Aggregation.merge().into(
+            MergeOperation.MergeOperationTarget.collection("meals")
+        ).on("_id")
+            .whenMatched(
+                MergeOperation.WhenDocumentsMatch.updateWith(
+                    Aggregation.newAggregation(
+                        Aggregation.addFields().addFieldWithValue("rating", "\$\$new.rating").build()
+                    )
+                )
+            ).whenNotMatched(MergeOperation.WhenDocumentsDontMatch.discardDocument()).build()
+
+        val pipeline = Aggregation.newAggregation(*stages.toTypedArray())
+        println("Aggregation pipeline: $pipeline")
+    }
+
+    fun updateRatings(
+        ratings: List<Rating>,
+        rating: Rating,
+        method: RatingUpdateMethod = ADD,
+        originalRating: Rating? = null
+    ) {
         var newAverageRating = 0.0
 
         when (method) {
             ADD -> {
                 newAverageRating =
-                    (meal.ratings.sumOf { it.rating } / (meal.ratings.size).toDouble())
+                    (ratings.sumOf { it.rating } / (ratings.size).toDouble())
             }
 
             UPDATE -> {
                 newAverageRating =
-                    (meal.ratings.sumOf { it.rating } - originalRating!!.rating + rating.rating) / (meal.ratings.size).toDouble()
+                    (ratings.sumOf { it.rating } - originalRating!!.rating + rating.rating) / (ratings.size).toDouble()
             }
 
             DELETE -> {
-                if (meal.ratings.size > 1) {
+                if (ratings.size > 1) {
                     newAverageRating =
-                        (meal.ratings.sumOf { it.rating } / (meal.ratings.size).toDouble())
+                        (ratings.sumOf { it.rating } / (ratings.size).toDouble())
                 }
             }
         }
@@ -129,8 +150,6 @@ class RatingService(
             Update().set("rating", newAverageRating),
             Meal::class.java
         )
-
-        meal.rating = newAverageRating
         cacheManager.getCache("allMeals")!!.clear()
     }
 
@@ -148,9 +167,10 @@ class RatingService(
             IdNotFoundException("Rating with id $id not found")
         }
 
-        updateRatings(mealRepository.findById(originalRating.mealId).orElseThrow {
-            NotFoundException("Meal not found")
-        }, rating, UPDATE, originalRating)
+        val mealRatings = ratingRepository.findByMealId(rating.mealId)
+            .ifEmpty { throw IdNotFoundException("Meal not found") }
+
+        updateRatings(mealRatings, rating, UPDATE, originalRating)
 
         originalRating.rating = rating.rating
 

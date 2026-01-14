@@ -18,7 +18,9 @@ data class Ingredient(
     val category: String,
 
     @DocumentReference
-    val unit: IngredientUnit? = null
+    val unit: IngredientUnit? = null,
+
+    val priority: Int? = null
 ) {
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)

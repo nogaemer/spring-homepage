@@ -1,6 +1,7 @@
 package de.nogaemer.springhomepage.main.filters
 
 import de.nogaemer.springhomepage.main.meals.dto.MealCardDto
+import de.nogaemer.springhomepage.user.UserResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -13,9 +14,16 @@ class FilterController(
     val filterService: FilterService
 ) {
 
-    @GetMapping("/all")
+    @GetMapping
     fun getFilters(): ResponseEntity<FilterResponse> {
         return ResponseEntity.ok().body(filterService.getFilters())
+    }
+
+    @GetMapping("/users")
+    fun getUsers(
+        @RequestParam name: String?
+    ): ResponseEntity<List<UserResponse>> {
+        return ResponseEntity.ok().body(filterService.getUsers(name))
     }
 
     @GetMapping("/favorite")

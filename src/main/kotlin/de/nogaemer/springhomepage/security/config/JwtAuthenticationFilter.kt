@@ -29,10 +29,20 @@ class JwtAuthenticationFilter(
         @NonNull response: HttpServletResponse,
         @NonNull filterChain: FilterChain
     ) {
-        if (request.servletPath.contains("/api/v1/auth")) {
+        val path = request.servletPath
+
+        // 1. Skip Auth for Login/Register endpoints
+        if (path.contains("/api/v1/auth")) {
             filterChain.doFilter(request, response)
             return
         }
+
+        // 2. NEW: Skip Auth for WebSocket Handshake (It's handled by HandshakeInterceptor)
+        if (path.startsWith("/ws-search")) {
+            filterChain.doFilter(request, response)
+            return
+        }
+
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             response.status = HttpServletResponse.SC_UNAUTHORIZED
