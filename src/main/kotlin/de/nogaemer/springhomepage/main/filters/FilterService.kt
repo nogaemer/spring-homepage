@@ -1,7 +1,7 @@
 package de.nogaemer.springhomepage.main.filters
 
 import de.nogaemer.springhomepage.main.meals.dto.MealCardDto
-import de.nogaemer.springhomepage.main.tags.TagRepository
+import de.nogaemer.springhomepage.main.meals.dto.UnifiedMealSearchRequest.SortBy
 import de.nogaemer.springhomepage.main.utils.AggregationUtils
 import de.nogaemer.springhomepage.user.UserRepository
 import de.nogaemer.springhomepage.user.UserResponse
@@ -19,16 +19,36 @@ import java.util.regex.Pattern
 @Service
 class FilterService(
     val userRepository: UserRepository,
-    val tagRepository: TagRepository,
     val userService: UserService,
     private val mongoTemplate: MongoTemplate
 ) {
 
     fun getFilters(): FilterResponse {
         val users = userRepository.findAll().map { UserResponse(it.id!!, it.name) }
-        val tags = tagRepository.findAll()
+        val sortParameters = SortBy.entries.map {
+            SortParameter(
+                it.name,
+                it.value,
+                (it == SortBy.RELEVANCE)
+            )
+        }
 
-        return FilterResponse(users, tags)
+        return FilterResponse(users, sortParameters)
+    }
+
+    fun getUsers(name: String? = null): List<UserResponse> {
+        val users = if (name.isNullOrBlank()) {
+            userRepository.findAll().map { UserResponse(it.id!!, it.name) }
+        } else {
+            val stages = mutableListOf<AggregationOperation>()
+            val pattern = Pattern.quote(name.trim())
+            stages.add(match(Criteria.where("name").regex(pattern, "i")))
+            stages.add(project("name", "id"))
+
+            val pipeline = newAggregation(*stages.toTypedArray())
+            mongoTemplate.aggregate(pipeline, "users", UserResponse::class.java).mappedResults
+        }
+        return users
     }
 
 

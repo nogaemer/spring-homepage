@@ -9,17 +9,23 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.*
 import org.springframework.data.mongodb.core.aggregation.AccumulatorOperators.Avg
+import org.springframework.data.mongodb.core.aggregation.AccumulatorOperators.Min
+import org.springframework.data.mongodb.core.aggregation.Aggregation.addFields
+import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators.*
 import org.springframework.data.mongodb.core.aggregation.ArrayOperators.*
 import org.springframework.data.mongodb.core.aggregation.ComparisonOperators.Eq
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.IfNull.ifNull
 import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.`when`
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.stereotype.Service
 import java.util.regex.Pattern
+import kotlin.math.max
 
 @Service
 class UnifiedMealSearchService(
     private val mongoTemplate: MongoTemplate,
 ) {
+
     fun search(request: UnifiedMealSearchRequest): UnifiedMealSearchResponse {
         val stages = mutableListOf<AggregationOperation>()
 
@@ -72,11 +78,11 @@ class UnifiedMealSearchService(
                     .otherwise(0)
 
                 scoreExpression = if (scoreExpression == null) scoreValue
-                else ArithmeticOperators.Add.valueOf(scoreExpression).add(scoreValue)
+                else Add.valueOf(scoreExpression).add(scoreValue)
             }
 
             stages += Aggregation.match(Criteria().andOperator(*baseCriteria.toTypedArray()))
-            stages += Aggregation.addFields().addField("relevanceScore").withValue(scoreExpression!!).build()
+            stages += addFields().addField("nameScore").withValue(scoreExpression!!).build()
         } else {
             stages += Aggregation.match(Criteria().andOperator(*baseCriteria.toTypedArray()))
         }
@@ -86,8 +92,6 @@ class UnifiedMealSearchService(
         // Your meals store ingredient references in MealIngredient.ingredient [file:63],
         // and your current filter compares against "$$ing.ingredient" [file:70].
         // ----------------------------
-        val didYouMean = mutableMapOf<String, List<String>>()
-        val resolvedIngredientIdsAsStrings = mutableListOf<String>()
 
         val ingredientNames = request.ingredients
             ?: emptyList()
@@ -96,7 +100,7 @@ class UnifiedMealSearchService(
             // Resolve names -> ids by loading all ingredients once.
             // (For large DBs: build a normalizedName field + index later.)
 
-            stages += Aggregation.addFields()
+            stages += addFields()
                 .addField("matchingIngredients")
                 .withValue(
                     Filter.filter("ingredients")
@@ -110,13 +114,13 @@ class UnifiedMealSearchService(
                 ).build()
 
             // Avoid divide-by-zero if a meal has 0 ingredients
-            stages += Aggregation.addFields()
+            stages += addFields()
                 .addField("ingSize").withValue(ingredientNames.size)
                 .addField("matchSize").withValue(Size.lengthOfArray("matchingIngredients"))
                 .build()
 
-            stages += Aggregation.addFields().addField("matchingRatio").withValue(
-                ArithmeticOperators.Divide.valueOf("matchSize").divideBy("ingSize")
+            stages += addFields().addField("matchingRatio").withValue(
+                Divide.valueOf("matchSize").divideBy("ingSize")
             ).build()
 
             val minMatch = request.minIngredientMatch ?: 0.0
@@ -135,7 +139,7 @@ class UnifiedMealSearchService(
 
         println(userIds)
 
-        val needsRatingLookup = userIds.isNotEmpty() || request.minUserRating != null || request.requireUserRatingMatch
+        val needsRatingLookup = userIds.isNotEmpty() || request.minUserRating != null || request.requireUserRating
 
         if (needsRatingLookup) {
 
@@ -160,7 +164,7 @@ class UnifiedMealSearchService(
                 ).then(0)
                     .otherwise(Avg.avgOf("\$userRatings.rating"))
 
-                stages += Aggregation.addFields().addFieldWithValue("averageUserRating", avgExpr).build()
+                stages += addFields().addFieldWithValue("averageUserRating", avgExpr).build()
 
             }
 
@@ -171,11 +175,90 @@ class UnifiedMealSearchService(
                 stages += Aggregation.match(Criteria.where(ratingFieldName).gte(minUserRating))
             }
 
-            if (request.requireUserRatingMatch) {
+            if (request.requireUserRating) {
                 val ratingsFieldName = if (userIds.isNotEmpty()) "userRatings" else "ratings"
                 stages += Aggregation.match(Criteria.where("$ratingsFieldName.0").exists(true))
             }
         }
+
+        // kotlin
+        // Calculate a weighted relevanceScore and add it to the aggregation pipeline
+        val nameWeight = 0.30
+        val ingredientWeight = 0.25
+        val userWeight = 0.20
+        val tagWeight = 0.10
+        val timeWeight = 0.10
+        val ratingWeight = 0.05
+
+        val tokenCount = if (tokens.isEmpty()) 1 else tokens.size // avoid divide by zero
+        val tagCount = tagObjectIds.size
+
+        val midTime = timeMin.toDouble() + (timeMax - timeMin).toDouble() / 2.0
+        val timeRange = max(1.0, (timeMax - timeMin).toDouble())
+
+        // nameScore = (ifNull(score,0) / tokenCount) * nameWeight
+        val nameScore: AggregationExpression = Multiply.valueOf(
+            Divide.valueOf(
+                ifNull("nameScore").then(0)
+            ).divideBy(tokenCount)
+        ).multiplyBy(nameWeight)
+
+        // ingredientMatch = ifNull(matchingRatio, 0) * ingredientWeight
+        val ingredientScore: AggregationExpression = Multiply.valueOf(
+            ifNull("matchingRatio").then(0)
+        ).multiplyBy(ingredientWeight)
+
+        // ratingScore = (ifNull(rating,0) / 5) * ratingWeight
+        val ratingScore: AggregationExpression = Multiply.valueOf(
+            Divide.valueOf(
+                ifNull("rating").then(0)
+            ).divideBy(5)
+        ).multiplyBy(ratingWeight)
+
+        // tagScore:
+        // if tagCount > 0 then (size(setIntersection(tags, requestedTags)) / tagCount) * tagWeight else 0
+        val requestedTagsValue = arrayOf(tagObjectIds).toObject()
+        val setIntersectionExpr = SetOperators.SetIntersection.arrayAsSet("tags").intersects(requestedTagsValue)
+        val tagFractionExpr: AggregationExpression = Divide.valueOf(
+            Size.lengthOfArray(setIntersectionExpr)
+        ).divideBy(tagCount.takeIf { it > 0 } ?: 1)
+
+        val tagScore: AggregationExpression = if (tagCount > 0) {
+            Multiply.valueOf(tagFractionExpr).multiplyBy(tagWeight)
+        } else {
+            // constant zero
+            Multiply.valueOf(Divide.valueOf(ifNull("rating").then(0)).divideBy(1)).multiplyBy(0.0)
+        }
+
+        // timeScore = (1 - min(|time - midTime| / timeRange, 1)) * timeWeight
+        // we build: let d = abs(time - midTime) ; clamp = min(d / timeRange, 1) ; timeScore = (1 - clamp) * timeWeight
+
+        val diffExpr = Abs.absoluteValueOf(Subtract.valueOf("time").subtract(midTime))
+        val normalizedDiffExpr = Divide.valueOf(diffExpr).divideBy(timeRange)
+        val clampedExpr = Min.minOf(normalizedDiffExpr).and(LiteralOperators.valueOf(1.0).asLiteral())
+        val timeScore: AggregationExpression = Multiply.valueOf(
+            Subtract.valueOf(LiteralOperators.valueOf(1.0).asLiteral()).subtract(clampedExpr)
+        ).multiplyBy(timeWeight)
+
+        // userAvgScore = (ifNull(averageUserRating, ifNull(rating,0)) / 5) * userWeight
+        val avgOrRatingExpr = ifNull("averageUserRating").then(ifNull("rating").then(0))
+        val userAvgScore: AggregationExpression = Multiply.valueOf(
+            Divide.valueOf(avgOrRatingExpr).divideBy(5)
+        ).multiplyBy(userWeight)
+
+        // Sum all components
+        val relevanceExpr = Add.valueOf(nameScore)
+            .add(ingredientScore)
+            .add(ratingScore)
+            .add(tagScore)
+            .add(timeScore)
+            .add(userAvgScore)
+
+        // add the computed relevance score to the pipeline
+        stages.add(
+            addFields().addField("relevanceScore").withValue(relevanceExpr).build()
+        )
+
 
         // ----------------------------
         // 5) Sorting + paging
@@ -216,6 +299,7 @@ class UnifiedMealSearchService(
         stages.addAll(projectionStages)
 
         val pipeline = Aggregation.newAggregation(*stages.toTypedArray())
+        println(pipeline.toString())
         val results = mongoTemplate.aggregate(pipeline, "meals", MealCardDto::class.java).mappedResults
 
         println("Aggregation pipeline: $pipeline")

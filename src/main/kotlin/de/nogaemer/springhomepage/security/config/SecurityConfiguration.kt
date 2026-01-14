@@ -1,38 +1,31 @@
 package de.nogaemer.springhomepage.security.config
 
-import de.nogaemer.springhomepage.security.auth.AuthenticationService
 import de.nogaemer.springhomepage.security.auth.OAuth2AuthenticationSuccessHandler
-import de.nogaemer.springhomepage.user.Permission
+import de.nogaemer.springhomepage.user.Permission.*
 import de.nogaemer.springhomepage.user.Role
-import de.nogaemer.springhomepage.user.Role.*
+import de.nogaemer.springhomepage.utils.EnvUtils
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import lombok.RequiredArgsConstructor
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AuthenticationProvider
+import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.logout.LogoutHandler
-
-import de.nogaemer.springhomepage.user.Permission.*
-import de.nogaemer.springhomepage.user.User
-import de.nogaemer.springhomepage.user.UserRepository
-import de.nogaemer.springhomepage.utils.EnvUtils
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.security.oauth2.core.user.OAuth2User
-import org.springframework.security.web.authentication.AuthenticationFailureHandler
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler
-import org.springframework.stereotype.Component
-import org.springframework.web.util.UriComponentsBuilder
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
@@ -52,10 +45,13 @@ class SecurityConfiguration {
     @Throws(Exception::class)
     fun securityFilterChain(http: HttpSecurity, oauth2AuthenticationSuccessHandler: OAuth2AuthenticationSuccessHandler): SecurityFilterChain {
         http
-            .csrf { obj: CsrfConfigurer<HttpSecurity> -> obj.disable() }
+            .csrf { it.disable() }
+            .cors(Customizer.withDefaults())
             .authorizeHttpRequests { req ->
                 req.requestMatchers(*WHITE_LIST_URL)
                     .permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers("/ws-search/**").permitAll()
                     .requestMatchers("/api/v1/management/**").hasAnyRole(Role.ADMIN.name, Role.MANAGER.name)
                     .requestMatchers(HttpMethod.GET, "/api/v1/management/**")
                     .hasAnyAuthority(ADMIN_READ.name, MANAGER_READ.name)
@@ -83,9 +79,8 @@ class SecurityConfiguration {
             .logout { logout ->
                 logout.logoutUrl("/api/v1/auth/logout")
                     .addLogoutHandler(logoutHandler)
-                    .logoutSuccessHandler { request: HttpServletRequest?, response: HttpServletResponse?, authentication: Authentication? -> SecurityContextHolder.clearContext() }
+                    .logoutSuccessHandler { _: HttpServletRequest?, _: HttpServletResponse?, _: Authentication? -> SecurityContextHolder.clearContext() }
             }
-
 
         return http.build()
     }
@@ -94,10 +89,27 @@ class SecurityConfiguration {
     fun authenticationFailureHandler(): AuthenticationFailureHandler {
         val baseUrl = EnvUtils.getEnvVariable("CLIENT_BASE_URL") ?: throw IllegalStateException("CLIENT_BASE_URL environment variable is not set")
 
-        return AuthenticationFailureHandler { request, response, exception ->
+        return AuthenticationFailureHandler { request, response, _ ->
             // Redirect to your React app with an error
             response.sendRedirect("${request.getHeader("Origin") ?: baseUrl}/api/v1/auth/error")
         }
+    }
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration()
+        config.allowedOrigins = listOf(
+            "http://localhost:5173",
+            "https://localhost:5173",
+            "https://meal-planer-react.appwrite.network"
+        )
+        config.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        config.allowedHeaders = listOf("*")
+        config.allowCredentials = true
+
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", config)
+        return source
     }
 
     companion object {

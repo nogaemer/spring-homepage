@@ -34,7 +34,7 @@ class UnifiedMealSearchServiceTest {
             ingredients = null,
             userIds = listOf(userId),
             minUserRating = null,
-            requireUserRatingMatch = false,
+            requireUserRating = false,
             sortBy = UnifiedMealSearchRequest.SortBy.RATING,
             skip = 0,
             limit = 10,

@@ -14,6 +14,7 @@ data class MealCardDto(
     val instructions: List<String>? = null,
 
     // Optional fields for specific filters
+    val relevanceScore: Double? = null,
     val matchingRatio: Double? = null,
     val matchingIngredients: List<SimpleMealIngredientDto>? = null,
     val ingredients: List<SimpleMealIngredientDto>? = null,

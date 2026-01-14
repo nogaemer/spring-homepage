@@ -139,6 +139,7 @@ class MealService(
 
         // Use the Projection class instead of Meal::class.java to bypass @DocumentReference logic
         val results = mongoTemplate.aggregate(aggregation, "meals", MealProjection::class.java)
+        println("unique Aggregation: $aggregation.to")
         val projection = results.uniqueMappedResult ?: throw IllegalArgumentException("Meal with id $id not found")
 
         // Map Projection back to Meal
@@ -151,7 +152,7 @@ class MealService(
                     Ingredient(
                         it.ingredient?.name ?: throw IllegalArgumentException("Ingredient with id ${it.ingredient?.id} not found"),
                         it.ingredient.category,
-                    ),
+                    ).apply { this.id = it.ingredient.id},
                     it.unit)
             },
             instructions = projection.instructions,
@@ -437,8 +438,8 @@ private data class MealProjection(
 private data class MealIngredientProjection(
     val name: String,
     val amount: String,
-    val ingredient: IngredientProjection?, // No @DocumentReference here
-    val unit: IngredientUnit?    // No @DocumentReference here
+    val ingredient: IngredientProjection?,
+    val unit: IngredientUnit?
 )
 
 private data class IngredientProjection(
