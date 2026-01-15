@@ -19,10 +19,10 @@ data class Token(
 
     val token: String,
     val tokenType: TokenType = TokenType.BEARER,
-    var revoked: Boolean,
-    var expired: Boolean,
+    var revoked: Boolean = false,
+    var expired: Boolean = false,
     @DBRef
-    var user: User
+    var user: User? = null
 ){
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)

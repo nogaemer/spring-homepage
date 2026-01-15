@@ -1,14 +1,10 @@
 package de.nogaemer.springhomepage.main.images
 
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
-import java.util.ArrayList
-
 data class Image(
     val thumbnail: String,
     val srcSetArray: ArrayList<String>?,
     var srcSetString: String? = null,
+    // store file ids for deletion (handled by AppwriteService or controller) instead of raw delete URLs
     val deleteUrls: Array<String>? = null
 ) {
     fun addToSrcSet(src: String) {
@@ -30,7 +26,10 @@ data class Image(
         if (thumbnail != other.thumbnail) return false
         if (srcSetArray != other.srcSetArray) return false
         if (srcSetString != other.srcSetString) return false
-        if (!deleteUrls.contentEquals(other.deleteUrls)) return false
+        if (deleteUrls != null) {
+            if (other.deleteUrls == null) return false
+            if (!deleteUrls.contentEquals(other.deleteUrls)) return false
+        } else if (other.deleteUrls != null) return false
 
         return true
     }
@@ -39,24 +38,7 @@ data class Image(
         var result = thumbnail.hashCode()
         result = 31 * result + (srcSetArray?.hashCode() ?: 0)
         result = 31 * result + (srcSetString?.hashCode() ?: 0)
-        result = 31 * result + deleteUrls.contentHashCode()
+        result = 31 * result + (deleteUrls?.contentHashCode() ?: 0)
         return result
-    }
-
-    fun delete(image: Image) {
-        image.deleteUrls?.forEach {
-            val client = OkHttpClient()
-
-            val request = Request.Builder()
-                .url(it)
-                .delete()
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw IOException("Unexpected code $response")
-                }
-            }
-        }
     }
 }
