@@ -45,3 +45,4 @@ local.properties
 # Allow explicit exceptions (uncomment to keep files tracked)
 # !/build/some-file-you-want-kept
 
+/src/main/resources/keystore.p12

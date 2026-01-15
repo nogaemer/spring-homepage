@@ -10,8 +10,6 @@ import de.nogaemer.springhomepage.user.Role
 import de.nogaemer.springhomepage.user.User
 import de.nogaemer.springhomepage.user.UserRepository
 import de.nogaemer.springhomepage.utils.EnvUtils
-import io.github.cdimascio.dotenv.Dotenv
-import io.github.cdimascio.dotenv.dotenv
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import lombok.RequiredArgsConstructor
@@ -36,7 +34,7 @@ class AuthenticationService(
     private val tokenRepository: TokenRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
-    private val authenticationManager: AuthenticationManager
+    private val authenticationManager: AuthenticationManager,
 ) {
 
     fun register(request: RegisterRequest?): AuthenticationResponse {
@@ -69,7 +67,7 @@ class AuthenticationService(
             )
         )
         val user: User? = repository.findByLogin(request.login)
-            .orElseThrow() { NotFoundException("User not found") }
+            .orElseThrow { NotFoundException("User not found") }
         val jwtToken = jwtService.generateToken(user as UserDetails)
         val refreshToken = jwtService.generateRefreshToken(user as UserDetails)
         saveUserToken(user, jwtToken)
@@ -89,6 +87,10 @@ class AuthenticationService(
         if (email != null && name != null) {
             // Find or create user
             val user = repository.findByLogin(email).orElseGet {
+                if (!EnvUtils.getEnvVariable("ALLOW_OAUTH2_USER_REGISTRATION")
+                        .equals("true", true)
+                ) return@orElseGet null
+
                 // Create new user if doesn't exist
                 val newUser = User(
                     name,
@@ -97,7 +99,7 @@ class AuthenticationService(
                     Role.USER
                 )
                 val savedUser = repository.save(newUser)
-                return@orElseGet savedUser;
+                return@orElseGet savedUser
             }
 
             val jwtToken = jwtService.generateToken(user as UserDetails)
@@ -143,7 +145,7 @@ class AuthenticationService(
 
 
     private fun saveUserToken(user: User, jwtToken: String): Token {
-        var newJwtToken = jwtToken;
+        var newJwtToken = jwtToken
 
         // Check if a token with the same value already exists
         var existingToken = tokenRepository.findByToken(jwtToken)
@@ -155,7 +157,7 @@ class AuthenticationService(
 
         // Save the new token
         val token = Token(
-            token = jwtToken,
+            token = newJwtToken,
             tokenType = TokenType.BEARER,
             revoked = false,
             expired = false,
@@ -222,7 +224,7 @@ class AuthenticationService(
             try {
                 jwtService.isTokenExpired(it.token)
                 it.expired
-            } catch (e: AuthorisationRequired) {
+            } catch (_: AuthorisationRequired) {
                 true
             }
         }
@@ -232,11 +234,10 @@ class AuthenticationService(
 
 @Component
 class OAuth2AuthenticationSuccessHandler(
-    private val userRepository: UserRepository,
     private val authenticationService: AuthenticationService,
-    private val jwtService: JwtService
 ) : AuthenticationSuccessHandler {
-    val baseUrl = EnvUtils.getEnvVariable("CLIENT_BASE_URL") ?: throw IllegalStateException("CLIENT_BASE_URL environment variable is not set")
+    val baseUrl = EnvUtils.getEnvVariable("CLIENT_BASE_URL")
+        ?: throw IllegalStateException("CLIENT_BASE_URL environment variable is not set")
 
     override fun onAuthenticationSuccess(
         request: HttpServletRequest,
@@ -252,11 +253,13 @@ class OAuth2AuthenticationSuccessHandler(
                 return
             }
 
-            response.sendRedirect("${baseUrl}/auth/callback?type=success" +
-                    "&token=${authenticationResponse.accessToken}" +
-                    "&refreshToken=${authenticationResponse.refreshToken}" +
-                    "&userId=${authenticationResponse.userId}")
-        } catch (e: Exception) {
+            response.sendRedirect(
+                "${baseUrl}/auth/callback?type=success" +
+                        "&token=${authenticationResponse.accessToken}" +
+                        "&refreshToken=${authenticationResponse.refreshToken}" +
+                        "&userId=${authenticationResponse.userId}"
+            )
+        } catch (_: Exception) {
             // Handle token generation error
             response.sendRedirect("${baseUrl}/auth/callback?type=error&message=token_generation_failed")
         }
