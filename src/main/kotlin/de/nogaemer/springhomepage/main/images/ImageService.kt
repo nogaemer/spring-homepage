@@ -1,7 +1,7 @@
 package de.nogaemer.springhomepage.main.images
 
+import de.nogaemer.springhomepage.appwrite.AppwriteService
 import de.nogaemer.springhomepage.utils.EnvUtils
-import io.github.cdimascio.dotenv.Dotenv
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,7 +15,9 @@ import java.util.*
 import javax.imageio.ImageIO
 
 @Service
-class ImageService {
+class ImageService(
+    private val appwriteService: AppwriteService
+) {
     fun uploadImage(base64Input: String): Image {
         val imageBytes = Base64.getDecoder().decode(base64Input)
 
@@ -23,36 +25,43 @@ class ImageService {
         val originalImage = ImageIO.read(inputStream) ?: throw IOException("Failed to read image from input stream")
         inputStream.close()
 
-        val croppedImage = cropTo3by2Ratio(originalImage)
-        val resizedImage800 = resizeImage(croppedImage, 800, 534)
-        val resizedImage360 = resizeImage(croppedImage, 360, 240)
+        val croppedImage = cropToFullHd(originalImage)
 
+        // convert images to bytes
+        val byteImage = bufferedImageToJpegBytes(croppedImage)
 
-        val image360 = uploadImageToImgBB(resizedImage360).getJSONObject("data")
-        val image800 = uploadImageToImgBB(resizedImage800).getJSONObject("data")
+        // Upload to Appwrite
+        val uploadedImage = appwriteService.uploadImage(byteImage, "image-800.jpg")
 
-        val image360Url = image360.getJSONObject("image").getString("url")
-        val image640Url = image800.getJSONObject("medium").getString("url") ?: image800.getJSONObject("image").getString("url")
-        val image800Url = image800.getJSONObject("image").getString("url")
+        val image360Url = appwriteService.getFilePreviewUrl(uploadedImage.id, 360)
+        val image640Url = appwriteService.getFilePreviewUrl(uploadedImage.id, 640)
+        val image820Url = appwriteService.getFilePreviewUrl(uploadedImage.id, 820)
+        val imageFullUrl = appwriteService.getFilePreviewUrl(uploadedImage.id, 1080)
 
         return Image(
-            thumbnail = image800.getJSONObject("thumb").getString("url"),
+            thumbnail = appwriteService.getFilePreviewUrl(uploadedImage.id, 200),
             srcSetArray = arrayListOf(
                 image360Url,
                 image640Url,
-                image800Url
+                image820Url,
+                imageFullUrl
             ),
             srcSetString = image360Url + " 360w, " +
                     image640Url + " 640w, " +
-                    image800Url + " 800w",
-            deleteUrls = arrayOf(
-                image360.getString("delete_url"),
-                image800.getString("delete_url")
-            ),
+                    image820Url + " 800w, "+
+                    imageFullUrl + " 1080w",
+            deleteUrls = arrayOf(uploadedImage.id),
         )
     }
 
+    private fun bufferedImageToJpegBytes(image: BufferedImage): ByteArray {
+        val outputStream = ByteArrayOutputStream()
+        ImageIO.write(image, "jpg", outputStream)
+        return outputStream.toByteArray()
+    }
+
     fun uploadImageToImgBB(imageData: BufferedImage): JSONObject {
+        // kept for backwards compatibility; not used by default anymore
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(imageData, "jpg", outputStream)
         val base64Image = Base64.getEncoder().encodeToString(outputStream.toByteArray())
@@ -103,22 +112,28 @@ class ImageService {
         return resizedImage
     }
 
-    private fun cropTo3by2Ratio(image: BufferedImage): BufferedImage {
+    private fun cropToFullHd(image: BufferedImage): BufferedImage {
         val width = image.width
         val height = image.height
-        val aspectRatio = 3.0 / 2.0
+        val aspectRatio = 16.0 / 9.0
 
-        val (cropWidth, cropHeight) = if (width.toDouble() / height > aspectRatio) {
-            // Image is wider than 3:2, crop width
+        val (rawCropWidth, rawCropHeight) = if (width.toDouble() / height > aspectRatio) {
             Pair((height * aspectRatio).toInt(), height)
         } else {
-            // Image is taller than 3:2, crop height
             Pair(width, (width / aspectRatio).toInt())
         }
 
-        val x = (width - cropWidth) / 2
-        val y = (height - cropHeight) / 2
+        val cropWidth = rawCropWidth.coerceIn(1, width)
+        val cropHeight = rawCropHeight.coerceIn(1, height)
 
-        return image.getSubimage(x, y, cropWidth, cropHeight)
+        val x = ((width - cropWidth) / 2).coerceAtLeast(0)
+        val y = ((height - cropHeight) / 2).coerceAtLeast(0)
+
+        val sub = image.getSubimage(x, y, cropWidth, cropHeight)
+        val copy = BufferedImage(sub.width, sub.height, BufferedImage.TYPE_INT_RGB)
+        val g = copy.createGraphics()
+        g.drawImage(sub, 0, 0, null)
+        g.dispose()
+        return copy
     }
 }

@@ -33,10 +33,10 @@ class JwtHandshakeInterceptor(
                     val userEmail = claims.subject
                     val storedToken = tokenRepository.findByToken(token)
 
-                    if (storedToken != null && !storedToken.expired && !storedToken.revoked && storedToken.user.username == userEmail) {
+                    if (storedToken != null && !storedToken.expired && !storedToken.revoked && storedToken.user!!.username == userEmail) {
                         // Valid! Set the user for this WebSocket session
                         val user = storedToken.user
-                        val auth = UsernamePasswordAuthenticationToken(user, null, user.authorities)
+                        val auth = UsernamePasswordAuthenticationToken(user, null, user!!.authorities)
 
                         // Store auth in attributes (Spring Security uses this for the WS session)
                         attributes["user"] = auth
