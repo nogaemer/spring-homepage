@@ -1,5 +1,6 @@
 package de.nogaemer.springhomepage.main.meals
 
+import de.nogaemer.springhomepage.appwrite.AppwriteService
 import de.nogaemer.springhomepage.exceptions.AlreadyReported
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.exceptions.UnitNotFoundException
@@ -46,7 +47,9 @@ class MealService(
     val unitService: UnitService,
     val ingredientService: IngredientService,
     val applicationContext: ApplicationContext,
-    private val mongoTemplate: MongoTemplate
+    private val mongoTemplate: MongoTemplate,
+    // Appwrite service for deleting uploaded files
+    private val appwriteService: AppwriteService
 ) {
 
     private fun self(): MealService = applicationContext.getBean(MealService::class.java)
@@ -257,7 +260,20 @@ class MealService(
     )
     fun deleteById(id: ObjectId) {
         val meal = self().findById(id)
-        meal.images?.forEach { image -> image.delete(image) }
+        // Delete files from Appwrite if present
+        meal.images?.forEach { image ->
+            image.deleteUrls?.forEach { fileId ->
+                try {
+                    if (fileId.isNotBlank()) {
+                        appwriteService.deleteImage(fileId)
+                    }
+                } catch (e: Exception) {
+                    // log and continue - don't fail whole delete if file deletion fails
+                    // using println to avoid introducing logger; adjust if you have a logger
+                    println("Failed to delete image file $fileId: ${e.message}")
+                }
+            }
+        }
 
         ratingService.deleteRatingsByMeal(meal)
         repository.deleteById(id)
