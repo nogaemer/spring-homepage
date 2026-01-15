@@ -23,26 +23,25 @@ class JwtAuthenticationFilter(
     val tokenRepository: TokenRepository
 ) : OncePerRequestFilter() {
 
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.servletPath ?: ""
+        // Allow preflight OPTIONS
+        if (request.method.equals("OPTIONS", ignoreCase = true)) return true
+        // public auth endpoints
+        if (path.startsWith("/api/v1/auth")) return true
+        // common public/static/documentation paths
+        if (path == "/" || path == "" || path == "/index.html") return true
+        if (path.startsWith("/swagger") || path.startsWith("/webjars") || path.startsWith("/configuration")) return true
+        if (path.startsWith("/ws-search")) return true
+        return false
+    }
+
     @Throws(ServletException::class, IOException::class)
     override fun doFilterInternal(
         @NonNull request: HttpServletRequest,
         @NonNull response: HttpServletResponse,
         @NonNull filterChain: FilterChain
     ) {
-        val path = request.servletPath
-
-        // 1. Skip Auth for Login/Register endpoints
-        if (path.contains("/api/v1/auth")) {
-            filterChain.doFilter(request, response)
-            return
-        }
-
-        // 2. NEW: Skip Auth for WebSocket Handshake (It's handled by HandshakeInterceptor)
-        if (path.startsWith("/ws-search")) {
-            filterChain.doFilter(request, response)
-            return
-        }
-
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             response.status = HttpServletResponse.SC_UNAUTHORIZED
