@@ -62,7 +62,7 @@ class JwtAuthenticationFilter(
                     val user = storedToken.user
                     // Verify the token belongs to the user
                     // Note: Signature and expiration are already validated by extractAllClaims
-                    if (user.username == userEmail) {
+                    if (user!!.username == userEmail) {
                         val authToken = UsernamePasswordAuthenticationToken(
                             user,
                             null,
