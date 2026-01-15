@@ -1,3 +1,9 @@
+/*
+ * JWT Authentication Filter
+ * 
+ * This filter validates JWT tokens on each HTTP request and establishes the Spring Security
+ * authentication context. It extends OncePerRequestFilter to execute exactly once per request.
+ */
 package de.nogaemer.springhomepage.security.config
 
 import de.nogaemer.springhomepage.exceptions.AuthorisationRequired
@@ -16,6 +22,12 @@ import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.io.IOException
 
+/**
+ * JWT authentication filter that validates Bearer tokens on each request.
+ * 
+ * This filter extracts JWT tokens from the Authorization header, validates them,
+ * and sets up the Spring Security authentication context for authenticated users.
+ */
 @Component
 @RequiredArgsConstructor
 class JwtAuthenticationFilter(
@@ -36,6 +48,15 @@ class JwtAuthenticationFilter(
         return false
     }
 
+    /**
+     * Validates JWT token and establishes authentication context.
+     * 
+     * Process:
+     * 1. Extract Bearer token from Authorization header
+     * 2. Parse and validate token (signature and expiration)
+     * 3. Verify token is not revoked in database
+     * 4. Create Spring Security authentication and set in context
+     */
     @Throws(ServletException::class, IOException::class)
     override fun doFilterInternal(
         @NonNull request: HttpServletRequest,
