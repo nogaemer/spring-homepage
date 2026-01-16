@@ -2,7 +2,7 @@
  * Service layer for ingredient unit management with advanced search capabilities.
  *
  * Provides CRUD operations for measurement units and implements MongoDB aggregation-based
- * search with relevance ranking. Search scores matches across abbreviated forms, full names,
+ * search with relevance ranking. Search score matches across abbreviated forms, full names,
  * descriptions, and categories.
  */
 package de.nogaemer.springhomepage.main.units
