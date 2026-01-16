@@ -71,7 +71,7 @@ object AggregationUtils {
      * @param lookupArray Name of the temporary array from $lookup stage
      * @param itemIdField Field name in current item containing the ID to match
      * @param targetField Field name to extract from matched element
-     * @return MongoDB Document representing the $let expression
+     * @return MongoDB Document representing the $let expression with BSON structure
      */
     fun lookupField(lookupArray: String, itemIdField: String, targetField: String): Document {
         return Document(
@@ -128,7 +128,7 @@ object AggregationUtils {
      *
      * @param lookupArray Name of the temporary array from $lookup stage
      * @param itemIdField Field name in current item containing the ID to match
-     * @return MongoDB Document representing the $let expression
+     * @return MongoDB Document representing the $let expression with BSON structure
      */
     fun lookupObject(lookupArray: String, itemIdField: String): Document {
         return Document(
