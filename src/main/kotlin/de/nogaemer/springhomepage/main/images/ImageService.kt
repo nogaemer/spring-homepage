@@ -14,10 +14,53 @@ import java.io.IOException
 import java.util.*
 import javax.imageio.ImageIO
 
+/**
+ * Service for processing and uploading images with automatic cropping and responsive sizing.
+ *
+ * This service handles the complete image upload pipeline:
+ * 1. Decodes base64-encoded image data
+ * 2. Reads the image into a [BufferedImage] for manipulation
+ * 3. Crops the image to 16:9 aspect ratio (Full HD/widescreen format)
+ * 4. Uploads the processed image to Appwrite storage
+ * 5. Generates preview URLs at multiple resolutions for responsive web design
+ *
+ * The service integrates with [AppwriteService] for cloud storage and creates
+ * srcset-compatible URL collections for optimal image delivery across devices.
+ *
+ * @property appwriteService Service for uploading to and managing Appwrite storage
+ */
 @Service
 class ImageService(
     private val appwriteService: AppwriteService
 ) {
+    /**
+     * Processes and uploads a base64-encoded image, creating responsive preview URLs.
+     *
+     * ## Processing pipeline
+     * 1. **Base64 decoding**: Converts base64 string to raw byte array using [Base64.getDecoder]
+     * 2. **BufferedImage creation**: Reads bytes into a [BufferedImage] for manipulation
+     * 3. **Aspect ratio cropping**: Crops to 16:9 using [cropToFullHd]
+     * 4. **JPEG conversion**: Converts the [BufferedImage] to JPEG byte array
+     * 5. **Appwrite upload**: Uploads processed image via [AppwriteService]
+     * 6. **URL generation**: Creates preview URLs at multiple resolutions
+     *
+     * ## Resolution strategy
+     * Generates preview URLs at four breakpoints for responsive design:
+     * - **360w**: Mobile portrait (thumbnail/preview quality)
+     * - **640w**: Mobile landscape / small tablets
+     * - **820w**: Tablets / small desktop
+     * - **1080w**: Full HD desktop displays
+     *
+     * Additionally creates a 200px thumbnail for gallery views.
+     *
+     * ## Appwrite integration
+     * The uploaded image is stored once, and Appwrite's preview endpoint dynamically
+     * generates resized versions on-demand using the width query parameter.
+     *
+     * @param base64Input Base64-encoded image string (without data URI prefix)
+     * @return [Image] object containing thumbnail, srcSet array/string, and file ID for deletion
+     * @throws IOException if image cannot be decoded, read, processed, or uploaded
+     */
     fun uploadImage(base64Input: String): Image {
         val imageBytes = Base64.getDecoder().decode(base64Input)
 
@@ -27,10 +70,8 @@ class ImageService(
 
         val croppedImage = cropToFullHd(originalImage)
 
-        // convert images to bytes
         val byteImage = bufferedImageToJpegBytes(croppedImage)
 
-        // Upload to Appwrite
         val uploadedImage = appwriteService.uploadImage(byteImage, "image-800.jpg")
 
         val image360Url = appwriteService.getFilePreviewUrl(uploadedImage.id, 360)
@@ -54,12 +95,35 @@ class ImageService(
         )
     }
 
+    /**
+     * Converts a [BufferedImage] to JPEG format byte array.
+     *
+     * Uses [ImageIO.write] to serialize the image in JPEG format with default
+     * compression settings.
+     *
+     * @param image The BufferedImage to convert
+     * @return Byte array containing JPEG-encoded image data
+     */
     private fun bufferedImageToJpegBytes(image: BufferedImage): ByteArray {
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(image, "jpg", outputStream)
         return outputStream.toByteArray()
     }
 
+    /**
+     * Legacy method for uploading images to ImgBB service.
+     *
+     * **Deprecated**: This method is kept for backwards compatibility but is no longer
+     * used by default. The application now uses Appwrite storage via [uploadImage].
+     *
+     * Converts a [BufferedImage] to base64-encoded JPEG and uploads to ImgBB's API.
+     * Requires IMGBB_API_KEY environment variable.
+     *
+     * @param imageData The BufferedImage to upload
+     * @return JSONObject containing ImgBB API response with URLs
+     * @throws IllegalStateException if IMGBB_API_KEY environment variable is not set
+     * @throws IOException if upload fails
+     */
     fun uploadImageToImgBB(imageData: BufferedImage): JSONObject {
         // kept for backwards compatibility; not used by default anymore
         val outputStream = ByteArrayOutputStream()
@@ -88,6 +152,17 @@ class ImageService(
         }
     }
 
+    /**
+     * Resizes an image while maintaining aspect ratio, constrained by max dimensions.
+     *
+     * Calculates new dimensions based on whether the image is landscape or portrait,
+     * scaling down only if it exceeds the maximum width or height.
+     *
+     * @param originalImage Source image to resize
+     * @param maxWidth Maximum width constraint in pixels
+     * @param maxHeight Maximum height constraint in pixels
+     * @return New [BufferedImage] with resized dimensions
+     */
     private fun resizeImage(originalImage: BufferedImage, maxWidth: Int, maxHeight: Int): BufferedImage {
         var width = originalImage.width
         var height = originalImage.height
@@ -112,6 +187,25 @@ class ImageService(
         return resizedImage
     }
 
+    /**
+     * Crops an image to 16:9 aspect ratio (Full HD/widescreen format).
+     *
+     * ## Cropping algorithm
+     * 1. Calculates target 16:9 aspect ratio (1.777...)
+     * 2. Compares current aspect ratio to determine crop direction:
+     *    - If wider than 16:9: crop width, keep full height
+     *    - If taller than 16:9: crop height, keep full width
+     * 3. Centers the crop region (removes equal amounts from both sides)
+     * 4. Uses [BufferedImage.getSubimage] to extract the crop region
+     * 5. Creates a copy to avoid shared raster issues
+     *
+     * ## Edge case handling
+     * - Uses [coerceIn] to ensure crop dimensions stay within valid bounds
+     * - Uses [coerceAtLeast] to ensure crop position is non-negative
+     *
+     * @param image Source image to crop
+     * @return New [BufferedImage] with 16:9 aspect ratio, centered crop
+     */
     private fun cropToFullHd(image: BufferedImage): BufferedImage {
         val width = image.width
         val height = image.height
