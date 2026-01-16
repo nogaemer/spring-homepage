@@ -94,7 +94,7 @@ class JwtHandshakeInterceptor(
      * ```kotlin
      * attributes["user"] = UsernamePasswordAuthenticationToken(user, null, authorities)
      * ```
-     * This is retrieved by [AuthHandshakeHandler.determineUser].
+     * This [UsernamePasswordAuthenticationToken] is retrieved by [AuthHandshakeHandler.determineUser].
      *
      * ## Error Handling
      * Catches all exceptions during validation and returns false,
