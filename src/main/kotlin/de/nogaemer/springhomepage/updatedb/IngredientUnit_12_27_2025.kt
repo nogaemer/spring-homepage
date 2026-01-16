@@ -1,3 +1,45 @@
+/**
+ * Database migration script: Convert ingredient unit strings to ObjectId references.
+ *
+ * ## Migration Purpose
+ * This migration transforms the meal ingredients data model from storing unit names
+ * as plain strings to storing references to IngredientUnit documents via ObjectId.
+ *
+ * ## Applied Date
+ * December 27, 2025
+ *
+ * ## Data Changes
+ * - Scans all documents in the `meals` collection
+ * - For each ingredient where `unit` is a String, attempts to match it to an IngredientUnit
+ * - Replaces the string with the corresponding IngredientUnit's ObjectId
+ * - Preserves ingredients that cannot be matched (leaves them unchanged)
+ *
+ * ## Benefits
+ * - Enables referential integrity with IngredientUnit collection
+ * - Supports normalized unit data (proper pluralization, abbreviations)
+ * - Facilitates unit-based filtering and aggregation queries
+ * - Reduces data duplication and inconsistencies
+ *
+ * ## Matching Algorithm
+ * The migration uses a fuzzy matching strategy:
+ * 1. Queries UnitService for candidates matching the string
+ * 2. Tries exact match (abbreviation, plural, full name)
+ * 3. Falls back to prefix matching
+ * 4. Falls back to substring matching
+ * 5. Tries shortened version (drop last character) if no match
+ * 6. Uses first candidate if no algorithmic match found
+ *
+ * ## Performance
+ * - Processes meals sequentially (not bulk operation)
+ * - Each meal triggers N unit service queries (N = number of string units in meal)
+ * - Consider running during low-traffic periods for large databases
+ *
+ * ## Idempotency
+ * Safe to re-run. Already migrated ingredients (ObjectId type) are skipped.
+ *
+ * @property unitService Service for querying and matching ingredient units
+ * @property mongoTemplate Direct MongoDB access for low-level document manipulation
+ */
 package de.nogaemer.springhomepage.updatedb
 
 import de.nogaemer.springhomepage.main.units.UnitService
@@ -7,13 +49,37 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Service
 import de.nogaemer.springhomepage.main.units.IngredientUnit as UnitModel
 
+/**
+ * Migration service for converting ingredient unit strings to ObjectId references.
+ *
+ * Transforms meal ingredient data from storing unit names as strings to storing
+ * normalized references to IngredientUnit documents.
+ */
 @Service
 class IngredientUnit_12_27_2025(private val unitService: UnitService, private val mongoTemplate: MongoTemplate) {
 
     /**
-     * Scans the `meals` collection for ingredients where `unit` is stored as a string
-     * and replaces it with the referenced IngredientUnit's ObjectId.
-     * Returns a small report map with the number of meals updated.
+     * Executes the migration across all meals in the database.
+     *
+     * Iterates through all meal documents, identifies ingredients with string-based
+     * unit fields, matches them to IngredientUnit documents, and replaces the strings
+     * with ObjectId references.
+     *
+     * ## Process Flow
+     * 1. Retrieves all documents from `meals` collection
+     * 2. For each meal, examines the `ingredients` array
+     * 3. Identifies ingredients where `unit` is a String
+     * 4. Attempts to match the string to an IngredientUnit via fuzzy matching
+     * 5. Replaces matched strings with ObjectId references
+     * 6. Updates the meal document if any changes were made
+     *
+     * ## MongoDB Operations
+     * - Collection scan: O(n) where n = number of meals
+     * - Update operation: One replaceOne per modified meal (not bulk)
+     * - No indexes required, but may benefit from index on meals._id
+     *
+     * @return Map containing migration statistics:
+     *   - "updatedMeals": Number of meal documents that were modified
      */
     fun updateAll(): Map<String, Any> {
         val collection = mongoTemplate.db.getCollection("meals")
@@ -66,6 +132,33 @@ class IngredientUnit_12_27_2025(private val unitService: UnitService, private va
         return mapOf("updatedMeals" to updatedCount)
     }
 
+    /**
+     * Attempts to match a unit string to an IngredientUnit using fuzzy matching.
+     *
+     * Employs a multi-strategy approach to handle variations in unit naming:
+     * - Exact matches on abbreviation (e.g., "g", "kg")
+     * - Exact matches on full name (e.g., "Gramm", "Kilogramm")
+     * - Plural forms (e.g., "Grammes")
+     * - Prefix matching (e.g., "kil" -> "Kilogramm")
+     * - Substring matching (e.g., "gram" -> "Gramm")
+     * - Shortened variants (e.g., "tl" -> "TL")
+     *
+     * ## Matching Strategy
+     * 1. Query UnitService for up to 10 candidates containing the string
+     * 2. Try exact match (case-insensitive) on all name forms
+     * 3. Try prefix match if exact fails
+     * 4. Try substring match if prefix fails
+     * 5. Retry with string minus last character (handles typos/variants)
+     * 6. Fall back to first candidate if all algorithms fail
+     *
+     * ## Performance Considerations
+     * - Makes UnitService query (may hit database or cache)
+     * - Case-insensitive comparisons for all candidate units
+     * - Returns null if input is blank
+     *
+     * @param unitString The unit string to match (e.g., "g", "Gramm", "kg")
+     * @return Matched IngredientUnit, or null if string is blank or no reasonable match found
+     */
     private fun findUnitForString(unitString: String): UnitModel? {
         if (unitString.isBlank()) return null
 
@@ -111,4 +204,5 @@ class IngredientUnit_12_27_2025(private val unitService: UnitService, private va
         return unit
     }
 }
+
 

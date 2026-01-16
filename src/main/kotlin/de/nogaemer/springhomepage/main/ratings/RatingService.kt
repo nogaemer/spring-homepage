@@ -1,3 +1,12 @@
+/**
+ * Service layer for rating management with automatic average rating calculations.
+ *
+ * Extends BaseService to provide CRUD operations with automatic cache management.
+ * When ratings are added/updated/deleted, this service automatically recalculates
+ * and updates the associated meal's average rating field.
+ *
+ * Caching strategy: Ratings are cached by mealId, invalidated on changes.
+ */
 package de.nogaemer.springhomepage.main.ratings
 
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
@@ -46,7 +55,19 @@ class RatingService(
         return repository.findAll()
     }
 
-
+    /**
+     * Retrieves all ratings for a meal with user details using MongoDB aggregation.
+     *
+     * Aggregation pipeline:
+     * 1. Match meal by ID
+     * 2. Lookup ratings array and include meal's average rating
+     * 3. Unwind ratings array
+     * 4. Lookup user details for each rating
+     * 5. Group back together with all ratings and average
+     *
+     * @param mealId The meal's ObjectId
+     * @return RatingResponse containing all ratings with user info and meal average
+     */
     fun getRatingsByMealId(mealId: ObjectId): RatingResponse {
 
         val stages = mutableListOf<AggregationOperation>()
@@ -68,6 +89,15 @@ class RatingService(
         return results[0]
     }
 
+    /**
+     * Creates a new rating and updates the meal's average rating.
+     *
+     * Recalculates average rating by summing all ratings (including new one) and dividing by count.
+     * Invalidates relevant caches after update.
+     *
+     * @param response The rating to create
+     * @return The created rating with generated ID
+     */
     override fun create(response: Rating): Rating {
         val rating = super.create(response)
 
@@ -80,6 +110,12 @@ class RatingService(
         return rating
     }
 
+    /**
+     * Deletes a rating by ID and updates the meal's average rating.
+     *
+     * @param id The rating's ObjectId
+     * @return The deleted rating
+     */
     fun delete(id: ObjectId): Rating {
         val rating = repository.findById(id)
             .orElseThrow { throw IdNotFoundException("Rating not found") }
@@ -99,6 +135,11 @@ class RatingService(
         return rating
     }
 
+    /**
+     * Synchronizes average ratings using MongoDB aggregation (currently not used).
+     *
+     * Alternative implementation using aggregation pipeline with $merge operation.
+     */
     fun syncAverageRatings(rating: Rating) {
         val stages = mutableListOf<AggregationOperation>()
         stages += Aggregation.match(Criteria.where("mealId").`is`(rating.mealId))
@@ -118,6 +159,21 @@ class RatingService(
         println("Aggregation pipeline: $pipeline")
     }
 
+    /**
+     * Updates meal average rating based on rating operation.
+     *
+     * Calculates new average differently based on operation:
+     * - ADD: Include new rating in average
+     * - UPDATE: Subtract old value, add new value
+     * - DELETE: Recalculate without deleted rating
+     *
+     * Updates meal document and clears allMeals cache.
+     *
+     * @param ratings All ratings for the meal
+     * @param rating The rating being added/updated/deleted
+     * @param method The type of operation
+     * @param originalRating The original rating value (for UPDATE operation)
+     */
     fun updateRatings(
         ratings: List<Rating>,
         rating: Rating,
@@ -161,7 +217,13 @@ class RatingService(
         return repository.findByMealId(objectId)
     }
 
-
+    /**
+     * Updates an existing rating and recalculates meal average.
+     *
+     * @param id The rating's ObjectId
+     * @param rating The updated rating data
+     * @return The updated rating
+     */
     fun update(id: ObjectId, rating: Rating): Rating? {
         val originalRating = repository.findById(id).orElseThrow {
             IdNotFoundException("Rating with id $id not found")
@@ -181,7 +243,9 @@ class RatingService(
         return repository.save(originalRating)
     }
 
-
+    /**
+     * Enum defining rating update operation types.
+     */
     enum class RatingUpdateMethod {
         ADD,
         UPDATE,
