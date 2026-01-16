@@ -20,13 +20,13 @@ import org.springframework.web.bind.annotation.*
  * All endpoints are mapped under /api/v1/meals base path.
  *
  * ## API Endpoints Summary
- * - **POST /search**: Advanced meal search with ingredient matching
- * - **GET /all**: Retrieve all meals as cards
- * - **GET /{id}**: Get single meal with full details
- * - **GET /byFilter**: Multi-dimensional meal filtering
- * - **POST /**: Create new meal
- * - **PUT /{id}**: Update existing meal
- * - **DELETE /{id}**: Delete meal and associated resources
+ * - POST /search - Advanced meal search with ingredient matching
+ * - GET /all - Retrieve all meals as cards
+ * - GET /{id} - Get single meal with full details
+ * - GET /byFilter - Multi-dimensional meal filtering
+ * - POST / - Create new meal
+ * - PUT /{id} - Update existing meal
+ * - DELETE /{id} - Delete meal and associated resources
  *
  * ## Response Format
  * All endpoints return ResponseEntity with appropriate HTTP status codes.
