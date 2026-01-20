@@ -1,8 +1,7 @@
 package de.nogaemer.springhomepage.main.meals.cookhistory
 
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
-import de.nogaemer.springhomepage.main.meals.MealRepository
-import de.nogaemer.springhomepage.main.meals.models.Meal
+import de.nogaemer.springhomepage.main.meals.MealService
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -24,13 +23,13 @@ import java.time.LocalDateTime
  * - Auto-complete daily meal plans when meal is logged
  *
  * ## Integration Points
- * - Fetches meal details from MealRepository for denormalization
+ * - Fetches meal details via lightweight projection (avoids N+1 issues)
  * - Updates DailyMealPlan completion status when meal is logged
  * - Validates meal existence before creating history entries
  *
  * @property cookHistoryRepository Repository for cook history persistence
  * @property dailyMealPlanRepository Repository for daily meal plan queries/updates
- * @property mealRepository Repository for meal lookups
+ * @property mealService Service for meal lookups
  *
  * @see MealCookHistory
  * @see MealCookHistoryDto
@@ -40,7 +39,7 @@ import java.time.LocalDateTime
 class MealCookHistoryService(
     private val cookHistoryRepository: MealCookHistoryRepository,
     private val dailyMealPlanRepository: DailyMealPlanRepository,
-    private val mealRepository: MealRepository
+    private val mealService: MealService
 ) {
     private val logger = LoggerFactory.getLogger(MealCookHistoryService::class.java)
 
@@ -52,7 +51,7 @@ class MealCookHistoryService(
      * automatically marked as completed.
      *
      * ## Process
-     * 1. Fetch meal details from database to get name and image
+     * 1. Fetch meal basic info using lightweight projection
      * 2. Create MealCookHistory entry with current timestamp
      * 3. Check for today's DailyMealPlan with same mealId
      * 4. If plan exists and not completed, mark it completed
@@ -74,25 +73,20 @@ class MealCookHistoryService(
     ) {
         logger.debug("Recording meal cooked - userId: $userId, mealId: $mealId")
 
-        // Fetch meal details for denormalization
-        val meal: Meal = mealRepository.findById(ObjectId(mealId)).orElseThrow {
-            IdNotFoundException("Meal not found with id: $mealId")
-        }
-
-        // Get first image thumbnail if available
-        val mealImageUrl: String? = meal.images?.firstOrNull()?.thumbnail
+        // Fetch meal basic info using lightweight projection (avoids N+1 query)
+        val mealInfo = mealService.getMealBasicInfo(ObjectId(mealId))
 
         // Create cook history entry
         val cookHistory = MealCookHistory(
             userId = userId,
             mealId = mealId,
             cookedAt = LocalDateTime.now(),
-            mealName = meal.name,
-            mealImageUrl = mealImageUrl
+            mealName = mealInfo.name,
+            mealImageUrl = mealInfo.imageUrl
         )
 
         cookHistoryRepository.save(cookHistory)
-        logger.info("Saved cook history entry for user: $userId, meal: ${meal.name}")
+        logger.info("Saved cook history entry for user: $userId, meal: ${mealInfo.name}")
 
         // Check if there's a daily meal plan for today with this meal
         val today = java.time.LocalDate.now()
