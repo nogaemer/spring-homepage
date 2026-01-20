@@ -126,8 +126,9 @@ class MealController(
      * - **id**: MongoDB ObjectId of the meal (hex string format)
      *
      * ## Response
-     * - **200 OK**: Complete [MealWithCookHistoryDto] with all relationships populated
-     *   and lastCookedAt for authenticated users, or [Meal] for anonymous users
+     * - **200 OK**: Complete [MealWithCookHistoryDto] with all relationships populated.
+     *   For authenticated users, lastCookedAt contains the timestamp of when the user
+     *   last cooked this meal; for anonymous/unauthenticated users, lastCookedAt is null.
      * - **400 Bad Request**: If id is null or invalid format
      * - **404 Not Found**: If meal doesn't exist (via exception handler)
      *
