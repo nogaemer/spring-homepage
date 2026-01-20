@@ -45,16 +45,16 @@ class DailyMealPlanService(
     private val logger = LoggerFactory.getLogger(DailyMealPlanService::class.java)
 
     /**
-     * Marks a meal as the plan for today.
+     * Marks a meal as the plan for a specific date.
      *
-     * Creates a new DailyMealPlan for today with the specified meal. If a plan
-     * already exists for today, it is deleted first (user can only have one plan
+     * Creates a new DailyMealPlan for the specified date with the given meal. If a plan
+     * already exists for that date, it is deleted first (user can only have one plan
      * per day). The meal name and image are denormalized for quick display.
      *
      * ## Process
      * 1. Fetch meal details for denormalization
-     * 2. Delete any existing plan for today
-     * 3. Create new DailyMealPlan with plannedDate = today
+     * 2. Delete any existing plan for the specified date
+     * 3. Create new DailyMealPlan with plannedDate
      * 4. Save and return the plan
      *
      * ## Validation
@@ -65,23 +65,22 @@ class DailyMealPlanService(
      * - New plan is always created with isCompleted = false
      *
      * @param userId User identifier creating the plan
-     * @param mealId Meal identifier to plan for today
+     * @param mealId Meal identifier to plan
+     * @param plannedDate Date when user plans to cook this meal
      * @return Created daily meal plan DTO
      * @throws IdNotFoundException If meal with mealId does not exist
      */
-    fun markMealForToday(userId: String, mealId: String): DailyMealPlanDto {
-        logger.debug("Marking meal for today - userId: $userId, mealId: $mealId")
+    fun markMealForDate(userId: String, mealId: String, plannedDate: LocalDate): DailyMealPlanDto {
+        logger.debug("Marking meal for date - userId: $userId, mealId: $mealId, date: $plannedDate")
 
         // Fetch meal details for denormalization
         val meal: Meal = mealRepository.findById(ObjectId(mealId)).orElseThrow {
             IdNotFoundException("Meal not found with id: $mealId")
         }
 
-        val today = LocalDate.now()
-
-        // Delete any existing plan for today (user can only mark one meal per day)
-        dailyMealPlanRepository.deleteByUserIdAndPlannedDate(userId, today)
-        logger.debug("Deleted existing plan for today if any - userId: $userId, date: $today")
+        // Delete any existing plan for this date (user can only mark one meal per day)
+        dailyMealPlanRepository.deleteByUserIdAndPlannedDate(userId, plannedDate)
+        logger.debug("Deleted existing plan for date if any - userId: $userId, date: $plannedDate")
 
         // Get first image thumbnail if available
         val mealImageUrl: String? = meal.images?.firstOrNull()?.thumbnail
@@ -92,16 +91,48 @@ class DailyMealPlanService(
             mealId = mealId,
             mealName = meal.name,
             mealImageUrl = mealImageUrl,
-            plannedDate = today,
+            plannedDate = plannedDate,
             markedAt = LocalDateTime.now(),
             isCompleted = false,
             completedAt = null
         )
 
         val savedPlan = dailyMealPlanRepository.save(dailyPlan)
-        logger.info("Created daily meal plan for user: $userId, meal: ${meal.name}, date: $today")
+        logger.info("Created daily meal plan for user: $userId, meal: ${meal.name}, date: $plannedDate")
 
         return savedPlan.toDto()
+    }
+
+    /**
+     * Marks a meal as the plan for today.
+     *
+     * Convenience method that calls markMealForDate with today's date.
+     *
+     * @param userId User identifier creating the plan
+     * @param mealId Meal identifier to plan for today
+     * @return Created daily meal plan DTO
+     * @throws IdNotFoundException If meal with mealId does not exist
+     */
+    fun markMealForToday(userId: String, mealId: String): DailyMealPlanDto {
+        return markMealForDate(userId, mealId, LocalDate.now())
+    }
+
+    /**
+     * Retrieves meal plan for a specific date.
+     *
+     * Returns the meal plan for the specified date if it exists. Returns null if no plan
+     * is set for that date.
+     *
+     * @param userId User identifier to filter by
+     * @param date Date to retrieve plan for
+     * @return Meal plan DTO, or null if no plan exists
+     */
+    fun getMealPlanForDate(userId: String, date: LocalDate): DailyMealPlanDto? {
+        logger.debug("Getting meal plan for date - userId: $userId, date: $date")
+
+        val dailyPlan = dailyMealPlanRepository.findByUserIdAndPlannedDate(userId, date)
+
+        return dailyPlan?.toDto()
     }
 
     /**
@@ -187,10 +218,7 @@ class DailyMealPlanService(
                 // Log to cook history with null optional fields
                 cookHistoryService.recordMealCooked(
                     userId = plan.userId,
-                    mealId = plan.mealId,
-                    portionSize = null,
-                    rating = null,
-                    notes = "Auto-logged from meal plan"
+                    mealId = plan.mealId
                 )
 
                 // Mark plan as completed
@@ -245,10 +273,7 @@ class DailyMealPlanService(
         // Record meal cooked (this will also mark the plan as completed)
         cookHistoryService.recordMealCooked(
             userId = userId,
-            mealId = mealId,
-            portionSize = null,
-            rating = null,
-            notes = null
+            mealId = mealId
         )
 
         logger.info("Completed meal plan for user: $userId, meal: ${dailyPlan.mealName}")

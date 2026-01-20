@@ -11,8 +11,7 @@ import java.time.LocalDateTime
 /**
  * Represents a cook history entry stored in the MongoDB "meal_cook_history" collection.
  *
- * This document tracks every time a user cooks a meal, including optional details
- * like portion size, rating, and personal notes. The data is denormalized to include
+ * This document tracks every time a user cooks a meal. The data is denormalized to include
  * meal name and image URL for quick display without additional lookups.
  *
  * ## MongoDB Indexes
@@ -23,7 +22,6 @@ import java.time.LocalDateTime
  * - Track cooking frequency and patterns
  * - Display "Last cooked: X days ago" on meal detail pages
  * - Generate cooking statistics and recommendations
- * - Rate and review meals after cooking
  *
  * @property id MongoDB ObjectId, auto-generated when saved
  * @property userId User identifier who cooked the meal
@@ -31,9 +29,6 @@ import java.time.LocalDateTime
  * @property cookedAt Timestamp when the meal was cooked
  * @property mealName Denormalized meal name for quick display
  * @property mealImageUrl Optional denormalized meal image URL
- * @property portionSize Optional number of portions cooked (may differ from recipe)
- * @property rating Optional user rating (1-5 scale) for this specific cook
- * @property notes Optional user notes about this cooking experience
  *
  * @see MealCookHistoryRepository
  * @see MealCookHistoryService
@@ -51,13 +46,7 @@ data class MealCookHistory(
     
     val mealName: String,
     
-    val mealImageUrl: String?,
-    
-    val portionSize: Int?,
-    
-    val rating: Int?,
-    
-    val notes: String?
+    val mealImageUrl: String?
 ) {
     @Id
     @field:JsonSerialize(using = ToStringSerializer::class)

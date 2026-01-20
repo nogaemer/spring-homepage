@@ -47,9 +47,9 @@ class MealCookHistoryService(
     /**
      * Records a new cook history entry for a user.
      *
-     * Creates a MealCookHistory document with denormalized meal data and optional
-     * cooking details. If a DailyMealPlan exists for today with this meal, it will
-     * be automatically marked as completed.
+     * Creates a MealCookHistory document with denormalized meal data.
+     * If a DailyMealPlan exists for today with this meal, it will be
+     * automatically marked as completed.
      *
      * ## Process
      * 1. Fetch meal details from database to get name and image
@@ -66,17 +66,11 @@ class MealCookHistoryService(
      *
      * @param userId User identifier who cooked the meal
      * @param mealId Meal identifier that was cooked
-     * @param portionSize Optional number of portions cooked
-     * @param rating Optional rating (1-5 scale) for this cook
-     * @param notes Optional user notes about this cook
      * @throws IdNotFoundException If meal with mealId does not exist
      */
     fun recordMealCooked(
         userId: String,
-        mealId: String,
-        portionSize: Int?,
-        rating: Int?,
-        notes: String?
+        mealId: String
     ) {
         logger.debug("Recording meal cooked - userId: $userId, mealId: $mealId")
 
@@ -94,10 +88,7 @@ class MealCookHistoryService(
             mealId = mealId,
             cookedAt = LocalDateTime.now(),
             mealName = meal.name,
-            mealImageUrl = mealImageUrl,
-            portionSize = portionSize,
-            rating = rating,
-            notes = notes
+            mealImageUrl = mealImageUrl
         )
 
         cookHistoryRepository.save(cookHistory)

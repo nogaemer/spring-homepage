@@ -147,26 +147,25 @@ class MealController(
     @GetMapping("/{id}")
     fun getSingleMeal(
         @PathVariable id: ObjectId?
-    ): ResponseEntity<Any> {
+    ): ResponseEntity<MealWithCookHistoryDto> {
         id ?: throw IllegalArgumentException("Id is null")
 
         val meal = service.findById(id)
         
         // Try to get authenticated user
-        return try {
+        val lastCookedAt = try {
             val userId = userService.getCurrentUser().id?.toString()
             if (userId != null) {
-                // User is authenticated - include cook history
-                val lastCookedAt = cookHistoryService.getLastCookDateForMeal(userId, id.toString())
-                ResponseEntity.ok(meal.toMealWithCookHistory(lastCookedAt))
+                cookHistoryService.getLastCookDateForMeal(userId, id.toString())
             } else {
-                // User not authenticated - return plain meal
-                ResponseEntity.ok(meal)
+                null
             }
         } catch (e: Exception) {
-            // User not authenticated or error getting user - return plain meal
-            ResponseEntity.ok(meal)
+            // User not authenticated or error getting user
+            null
         }
+        
+        return ResponseEntity.ok(meal.toMealWithCookHistory(lastCookedAt))
     }
 
     /**
