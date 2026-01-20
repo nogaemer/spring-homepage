@@ -453,6 +453,50 @@ class MealService(
     }
 
     /**
+     * Fetches lightweight meal basic information using aggregation projection.
+     *
+     * Returns only meal name and first image URL without loading DocumentReference
+     * fields (tags, ratings, notes, ingredients, units). This avoids N+1 query issues
+     * when only basic meal info is needed for denormalization.
+     *
+     * ## Performance
+     * Uses MongoDB aggregation with projection to fetch only required fields.
+     * Does not trigger lazy loading of @DocumentReference relationships.
+     *
+     * ## Use Cases
+     * - Denormalizing meal data in cook history
+     * - Denormalizing meal data in daily meal plans
+     * - Any scenario requiring just name and image
+     *
+     * ## Aggregation Pipeline
+     * 1. Match by meal ID
+     * 2. Project only name and first image thumbnail
+     *
+     * @param id MongoDB ObjectId of the meal
+     * @return MealBasicInfoDto with name and image URL
+     * @throws IdNotFoundException If meal with given ID not found
+     */
+    fun getMealBasicInfo(id: ObjectId): de.nogaemer.springhomepage.main.meals.dto.MealBasicInfoDto {
+        val matchStage = match(Criteria.where("_id").`is`(id))
+        
+        val projectStage = project()
+            .and("name").`as`("name")
+            .andExpression("{ \$arrayElemAt: [ '\$images.thumbnail', 0 ] }").`as`("imageUrl")
+        
+        val aggregation = newAggregation(matchStage, projectStage)
+        
+        val result: AggregationResults<de.nogaemer.springhomepage.main.meals.dto.MealBasicInfoDto> = 
+            mongoTemplate.aggregate(
+                aggregation,
+                "meals",
+                de.nogaemer.springhomepage.main.meals.dto.MealBasicInfoDto::class.java
+            )
+        
+        return result.uniqueMappedResult 
+            ?: throw IdNotFoundException("Meal not found with id: $id")
+    }
+
+    /**
      * Deletes a meal and cleans up all associated resources.
      *
      * ## Deletion Flow

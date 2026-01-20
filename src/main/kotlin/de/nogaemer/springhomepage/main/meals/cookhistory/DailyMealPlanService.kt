@@ -1,8 +1,7 @@
 package de.nogaemer.springhomepage.main.meals.cookhistory
 
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
-import de.nogaemer.springhomepage.main.meals.MealRepository
-import de.nogaemer.springhomepage.main.meals.models.Meal
+import de.nogaemer.springhomepage.main.meals.MealService
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -16,8 +15,8 @@ import java.time.LocalDateTime
  * Enforces one meal plan per user per day constraint and integrates with cook history.
  *
  * ## Core Responsibilities
- * - Mark a meal for today (replaces any existing plan)
- * - Retrieve today's meal plan
+ * - Mark a meal for a specific date (replaces any existing plan)
+ * - Retrieve meal plans for specific dates
  * - Clear meal plan without logging to history
  * - Auto-complete past incomplete plans (scheduled task)
  * - Manually complete meal plan (logs to history)
@@ -29,7 +28,7 @@ import java.time.LocalDateTime
  * - Completing a plan logs it to cook history and marks isCompleted
  *
  * @property dailyMealPlanRepository Repository for daily meal plan persistence
- * @property mealRepository Repository for meal lookups
+ * @property mealService Service for meal lookups
  * @property cookHistoryService Service for recording cook history
  *
  * @see DailyMealPlan
@@ -39,7 +38,7 @@ import java.time.LocalDateTime
 @Service
 class DailyMealPlanService(
     private val dailyMealPlanRepository: DailyMealPlanRepository,
-    private val mealRepository: MealRepository,
+    private val mealService: MealService,
     private val cookHistoryService: MealCookHistoryService
 ) {
     private val logger = LoggerFactory.getLogger(DailyMealPlanService::class.java)
@@ -52,7 +51,7 @@ class DailyMealPlanService(
      * per day). The meal name and image are denormalized for quick display.
      *
      * ## Process
-     * 1. Fetch meal details for denormalization
+     * 1. Fetch meal basic info using lightweight projection
      * 2. Delete any existing plan for the specified date
      * 3. Create new DailyMealPlan with plannedDate
      * 4. Save and return the plan
@@ -73,24 +72,19 @@ class DailyMealPlanService(
     fun markMealForDate(userId: String, mealId: String, plannedDate: LocalDate): DailyMealPlanDto {
         logger.debug("Marking meal for date - userId: $userId, mealId: $mealId, date: $plannedDate")
 
-        // Fetch meal details for denormalization
-        val meal: Meal = mealRepository.findById(ObjectId(mealId)).orElseThrow {
-            IdNotFoundException("Meal not found with id: $mealId")
-        }
+        // Fetch meal basic info using lightweight projection (avoids N+1 query)
+        val mealInfo = mealService.getMealBasicInfo(ObjectId(mealId))
 
         // Delete any existing plan for this date (user can only mark one meal per day)
         dailyMealPlanRepository.deleteByUserIdAndPlannedDate(userId, plannedDate)
         logger.debug("Deleted existing plan for date if any - userId: $userId, date: $plannedDate")
 
-        // Get first image thumbnail if available
-        val mealImageUrl: String? = meal.images?.firstOrNull()?.thumbnail
-
         // Create new plan
         val dailyPlan = DailyMealPlan(
             userId = userId,
             mealId = mealId,
-            mealName = meal.name,
-            mealImageUrl = mealImageUrl,
+            mealName = mealInfo.name,
+            mealImageUrl = mealInfo.imageUrl,
             plannedDate = plannedDate,
             markedAt = LocalDateTime.now(),
             isCompleted = false,
@@ -98,7 +92,7 @@ class DailyMealPlanService(
         )
 
         val savedPlan = dailyMealPlanRepository.save(dailyPlan)
-        logger.info("Created daily meal plan for user: $userId, meal: ${meal.name}, date: $plannedDate")
+        logger.info("Created daily meal plan for user: $userId, meal: ${mealInfo.name}, date: $plannedDate")
 
         return savedPlan.toDto()
     }
