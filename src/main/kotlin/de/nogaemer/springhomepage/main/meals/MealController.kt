@@ -1,16 +1,21 @@
 package de.nogaemer.springhomepage.main.meals
 
+import de.nogaemer.springhomepage.main.meals.cookhistory.MealCookHistoryService
 import de.nogaemer.springhomepage.main.meals.dto.MealCardDto
 import de.nogaemer.springhomepage.main.meals.dto.MealDto
+import de.nogaemer.springhomepage.main.meals.dto.MealWithCookHistoryDto
 import de.nogaemer.springhomepage.main.meals.dto.UnifiedMealSearchRequest
 import de.nogaemer.springhomepage.main.meals.dto.UnifiedMealSearchResponse
+import de.nogaemer.springhomepage.main.meals.dto.toMealWithCookHistory
 import de.nogaemer.springhomepage.main.meals.import.MealImportUrl
 import de.nogaemer.springhomepage.main.meals.models.Meal
 import de.nogaemer.springhomepage.main.meals.models.MealImportMethod
+import de.nogaemer.springhomepage.user.UserService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 
 /**
@@ -48,7 +53,10 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/v1/meals")
 class MealController(
-    private val unifiedMealSearchService: UnifiedMealSearchService, private val service: MealService
+    private val unifiedMealSearchService: UnifiedMealSearchService, 
+    private val service: MealService,
+    private val cookHistoryService: MealCookHistoryService,
+    private val userService: UserService
 ) {
 
     /**
@@ -112,12 +120,14 @@ class MealController(
      *
      * Returns full meal entity including ingredients, instructions, tags, ratings,
      * and notes. All @DocumentReference relationships are resolved via aggregation.
+     * For authenticated users, also includes lastCookedAt timestamp.
      *
      * ## Path Parameters
      * - **id**: MongoDB ObjectId of the meal (hex string format)
      *
      * ## Response
-     * - **200 OK**: Complete [Meal] entity with all relationships populated
+     * - **200 OK**: Complete [MealWithCookHistoryDto] with all relationships populated
+     *   and lastCookedAt for authenticated users, or [Meal] for anonymous users
      * - **400 Bad Request**: If id is null or invalid format
      * - **404 Not Found**: If meal doesn't exist (via exception handler)
      *
@@ -126,18 +136,37 @@ class MealController(
      * - Recipe viewing
      * - Editing preparation (load existing data)
      *
+     * ## Enhanced Features
+     * When user is authenticated, includes:
+     * - lastCookedAt: Timestamp of when user last cooked this meal
+     *
      * @param id ObjectId of the meal to retrieve
-     * @return ResponseEntity containing complete meal details
+     * @return ResponseEntity containing meal details with cook history if authenticated
      * @throws IllegalArgumentException If id is null
      */
     @GetMapping("/{id}")
     fun getSingleMeal(
         @PathVariable id: ObjectId?
-    ): ResponseEntity<Meal> {
+    ): ResponseEntity<Any> {
         id ?: throw IllegalArgumentException("Id is null")
 
-        val response = service.findById(id)
-        return ResponseEntity.ok(response)
+        val meal = service.findById(id)
+        
+        // Try to get authenticated user
+        return try {
+            val userId = userService.getCurrentUser().id?.toString()
+            if (userId != null) {
+                // User is authenticated - include cook history
+                val lastCookedAt = cookHistoryService.getLastCookDateForMeal(userId, id.toString())
+                ResponseEntity.ok(meal.toMealWithCookHistory(lastCookedAt))
+            } else {
+                // User not authenticated - return plain meal
+                ResponseEntity.ok(meal)
+            }
+        } catch (e: Exception) {
+            // User not authenticated or error getting user - return plain meal
+            ResponseEntity.ok(meal)
+        }
     }
 
     /**
