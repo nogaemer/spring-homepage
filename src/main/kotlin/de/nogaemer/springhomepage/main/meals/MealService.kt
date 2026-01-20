@@ -34,6 +34,7 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation.*
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation
 import org.springframework.data.mongodb.core.aggregation.AggregationResults
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
@@ -481,7 +482,7 @@ class MealService(
         
         val projectStage = project()
             .and("name").`as`("name")
-            .andExpression("{ \$arrayElemAt: [ '\$images.thumbnail', 0 ] }").`as`("imageUrl")
+            .and(ArrayOperators.ArrayElemAt.arrayOf("images.thumbnail").elementAt(0)).`as`("imageUrl")
         
         val aggregation = newAggregation(matchStage, projectStage)
         
