@@ -9,13 +9,15 @@ import org.springframework.web.bind.annotation.*
  * REST controller for daily meal planning.
  *
  * Provides endpoints for managing user's daily meal plans - marking meals for
- * today, retrieving today's plan, clearing plans, and completing plans.
+ * specific dates, retrieving plans, clearing plans, and completing plans.
  * All endpoints require authentication to identify the current user.
  * All endpoints are mapped under /api/v1/meal-plan base path.
  *
  * ## Endpoint Summary
  * - POST /api/v1/meal-plan/mark-today - Mark a meal for today
+ * - POST /api/v1/meal-plan/mark - Mark a meal for a specific date
  * - GET /api/v1/meal-plan/today - Get today's meal plan
+ * - GET /api/v1/meal-plan/{date} - Get meal plan for a specific date
  * - DELETE /api/v1/meal-plan/today - Clear today's plan
  * - POST /api/v1/meal-plan/complete-today - Mark today's plan as cooked
  *
@@ -76,11 +78,55 @@ class DailyMealPlanController(
      */
     @PostMapping("/mark-today")
     fun markMealForToday(
-        @RequestBody request: MarkMealForTodayRequest
+        @RequestBody request: MarkMealRequest
     ): ResponseEntity<DailyMealPlanDto> {
         val userId = userService.getCurrentUser().id!!.toString()
 
         val plan = dailyMealPlanService.markMealForToday(userId, request.mealId)
+
+        return ResponseEntity.ok(plan)
+    }
+
+    /**
+     * POST /api/v1/meal-plan/mark
+     *
+     * Marks a meal as the plan for a specific future date.
+     *
+     * Creates a new daily meal plan for the specified date with the given meal.
+     * If a plan already exists for that date, it is replaced (user can only have one
+     * plan per day).
+     *
+     * ## Request Body
+     * ```json
+     * {
+     *   "mealId": "507f1f77bcf86cd799439011",
+     *   "plannedDate": "2024-01-25"
+     * }
+     * ```
+     *
+     * ## Response
+     * - **200 OK**: [DailyMealPlanDto] with created plan details
+     * - **404 Not Found**: If meal with mealId does not exist
+     *
+     * ## Business Rules
+     * - Replaces any existing plan for the specified date
+     * - Plan is created with isCompleted = false
+     * - Meal name and image are denormalized for quick display
+     *
+     * ## Authentication Required
+     * User must be authenticated. User ID is extracted from security context.
+     *
+     * @param request Request containing mealId and plannedDate
+     * @return ResponseEntity containing created DailyMealPlanDto
+     * @throws IdNotFoundException If meal does not exist
+     */
+    @PostMapping("/mark")
+    fun markMealForDate(
+        @RequestBody request: MarkMealForDateRequest
+    ): ResponseEntity<DailyMealPlanDto> {
+        val userId = userService.getCurrentUser().id!!.toString()
+
+        val plan = dailyMealPlanService.markMealForDate(userId, request.mealId, request.plannedDate)
 
         return ResponseEntity.ok(plan)
     }
@@ -112,6 +158,44 @@ class DailyMealPlanController(
         val userId = userService.getCurrentUser().id!!.toString()
 
         val plan = dailyMealPlanService.getTodaysMealPlan(userId)
+            ?: return ResponseEntity.notFound().build()
+
+        return ResponseEntity.ok(plan)
+    }
+
+    /**
+     * GET /api/v1/meal-plan/{date}
+     *
+     * Retrieves meal plan for a specific date for the authenticated user.
+     *
+     * Returns the meal plan for the specified date if one exists. Returns 404
+     * if no plan is set for that date.
+     *
+     * ## Path Parameters
+     * - **date**: Date in ISO format (YYYY-MM-DD), e.g., "2024-01-25"
+     *
+     * ## Response
+     * - **200 OK**: [DailyMealPlanDto] with plan details
+     * - **404 Not Found**: If no plan exists for the specified date
+     *
+     * ## Use Cases
+     * - View planned meals for the week
+     * - Check upcoming meal plans
+     * - Access historical meal plans
+     *
+     * ## Authentication Required
+     * User must be authenticated. User ID is extracted from security context.
+     *
+     * @param date Date to retrieve plan for
+     * @return ResponseEntity containing DailyMealPlanDto or 404 if no plan
+     */
+    @GetMapping("/{date}")
+    fun getMealPlanForDate(
+        @PathVariable date: java.time.LocalDate
+    ): ResponseEntity<DailyMealPlanDto> {
+        val userId = userService.getCurrentUser().id!!.toString()
+
+        val plan = dailyMealPlanService.getMealPlanForDate(userId, date)
             ?: return ResponseEntity.notFound().build()
 
         return ResponseEntity.ok(plan)
@@ -197,6 +281,17 @@ class DailyMealPlanController(
  *
  * @property mealId MongoDB ObjectId of the meal to mark for today
  */
-data class MarkMealForTodayRequest(
+data class MarkMealRequest(
     val mealId: String
+)
+
+/**
+ * Request DTO for marking a meal for a specific date.
+ *
+ * @property mealId MongoDB ObjectId of the meal to mark
+ * @property plannedDate Date when user plans to cook this meal (ISO format YYYY-MM-DD)
+ */
+data class MarkMealForDateRequest(
+    val mealId: String,
+    val plannedDate: java.time.LocalDate
 )

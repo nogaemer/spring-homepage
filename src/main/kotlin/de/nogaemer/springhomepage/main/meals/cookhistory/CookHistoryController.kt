@@ -47,19 +47,12 @@ class CookHistoryController(
      *
      * Records a new cook history entry for the authenticated user.
      *
-     * Creates a cook history entry with the specified meal and optional details.
+     * Creates a simple cook history entry with just the meal ID and timestamp.
      * If the user has a daily meal plan for today with this meal, it will be
      * automatically marked as completed.
      *
      * ## Path Parameters
      * - **mealId**: MongoDB ObjectId of the meal that was cooked
-     *
-     * ## Query Parameters
-     * - **portionSize** (optional): Number of portions cooked
-     * - **rating** (optional): User rating for this cook (1-5 scale)
-     *
-     * ## Request Body
-     * - **notes** (optional): User notes about this cooking experience
      *
      * ## Response
      * - **200 OK**: Cook history entry created successfully
@@ -73,27 +66,18 @@ class CookHistoryController(
      * User must be authenticated. User ID is extracted from security context.
      *
      * @param mealId MongoDB ObjectId of the meal
-     * @param portionSize Optional number of portions cooked
-     * @param rating Optional rating (1-5) for this cook
-     * @param notes Optional user notes
      * @return ResponseEntity with 200 OK status
      * @throws IdNotFoundException If meal does not exist
      */
     @PostMapping("/{mealId}/log")
     fun logMealCooked(
-        @PathVariable mealId: String,
-        @RequestParam(required = false) portionSize: Int?,
-        @RequestParam(required = false) rating: Int?,
-        @RequestBody(required = false) notes: String?
+        @PathVariable mealId: String
     ): ResponseEntity<Void> {
         val userId = userService.getCurrentUser().id!!.toString()
 
         cookHistoryService.recordMealCooked(
             userId = userId,
-            mealId = mealId,
-            portionSize = portionSize,
-            rating = rating,
-            notes = notes
+            mealId = mealId
         )
 
         return ResponseEntity.ok().build()

@@ -19,9 +19,6 @@ import java.time.LocalDateTime
  * @property mealName Name of the meal (denormalized for display)
  * @property mealImageUrl Optional image URL for the meal
  * @property cookedAt Timestamp when the meal was cooked
- * @property portionSize Optional number of portions cooked
- * @property rating Optional user rating (1-5) for this cook
- * @property notes Optional user notes about this cooking experience
  *
  * @see MealCookHistory
  */
@@ -30,10 +27,7 @@ data class MealCookHistoryDto(
     val mealId: String,
     val mealName: String,
     val mealImageUrl: String?,
-    val cookedAt: LocalDateTime,
-    val portionSize: Int?,
-    val rating: Int?,
-    val notes: String?
+    val cookedAt: LocalDateTime
 )
 
 /**
@@ -55,8 +49,5 @@ fun MealCookHistory.toDto() = MealCookHistoryDto(
     mealId = mealId,
     mealName = mealName,
     mealImageUrl = mealImageUrl,
-    cookedAt = cookedAt,
-    portionSize = portionSize,
-    rating = rating,
-    notes = notes
+    cookedAt = cookedAt
 )
