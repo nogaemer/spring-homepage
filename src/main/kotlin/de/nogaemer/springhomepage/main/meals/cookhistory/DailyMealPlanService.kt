@@ -168,6 +168,11 @@ class DailyMealPlanService(
      * ## Logging
      * Logs to cook history with null values for portionSize, rating, and notes
      * since these details weren't manually provided.
+     *
+     * ## Concurrency Note
+     * This method processes plans individually in a forEach loop. In distributed
+     * deployments with multiple instances, consider implementing distributed locking
+     * (e.g., using Redis or database-based locks) to prevent duplicate processing.
      */
     fun autoCompletePastPlans() {
         logger.info("Starting auto-completion of past meal plans")
