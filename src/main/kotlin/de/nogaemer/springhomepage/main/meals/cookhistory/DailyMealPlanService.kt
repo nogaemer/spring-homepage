@@ -236,32 +236,26 @@ class DailyMealPlanService(
      * used when the user explicitly marks the meal as cooked through the API.
      *
      * ## Process
-     * 1. Verify today's plan exists and matches the mealId
+     * 1. Retrieve today's plan (if exists)
      * 2. Call recordMealCooked to create history entry (which also updates the plan)
      *
      * ## Validation
      * - Plan must exist for today
-     * - Plan's mealId must match provided mealId
      *
      * @param userId User identifier completing the plan
-     * @param mealId Meal identifier to complete
-     * @throws IdNotFoundException If no plan exists for today or mealId doesn't match
+     * @throws IdNotFoundException If no plan exists for today
      */
-    fun completeMealPlan(userId: String, mealId: String) {
-        logger.debug("Completing meal plan - userId: $userId, mealId: $mealId")
+    fun completeMealPlan(userId: String) {
+        logger.debug("Completing meal plan - userId: $userId")
 
         val today = LocalDate.now()
         val dailyPlan = dailyMealPlanRepository.findByUserIdAndPlannedDate(userId, today)
             ?: throw IdNotFoundException("No meal plan found for today")
 
-        if (dailyPlan.mealId != mealId) {
-            throw IdNotFoundException("Meal plan for today is for a different meal")
-        }
-
         // Record meal cooked (this will also mark the plan as completed)
         cookHistoryService.recordMealCooked(
             userId = userId,
-            mealId = mealId
+            mealId = dailyPlan.mealId
         )
 
         logger.info("Completed meal plan for user: $userId, meal: ${dailyPlan.mealName}")
