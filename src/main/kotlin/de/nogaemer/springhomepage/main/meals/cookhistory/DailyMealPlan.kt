@@ -2,10 +2,6 @@ package de.nogaemer.springhomepage.main.meals.cookhistory
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer
-import lombok.AllArgsConstructor
-import lombok.Data
-import lombok.NoArgsConstructor
-import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.Indexed
@@ -51,9 +47,6 @@ import java.time.LocalDateTime
  */
 @Document(collection = "daily_meal_plans")
 @CompoundIndex(name = "userId_plannedDate_unique_idx", def = "{'userId': 1, 'plannedDate': 1}", unique = true)
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 data class DailyMealPlan(
     @Indexed
     val userId: String,
