@@ -247,7 +247,7 @@ class DailyMealPlanController(
      * - **404 Not Found**: If no plan exists for today
      *
      * ## Process
-     * 1. Verify today's plan exists
+     * 1. Retrieve and verify today's plan exists
      * 2. Create cook history entry
      * 3. Mark plan as completed (isCompleted = true, completedAt = now)
      *
@@ -266,11 +266,7 @@ class DailyMealPlanController(
     fun completeMealPlan(): ResponseEntity<Void> {
         val userId = userService.getCurrentUser().id!!.toString()
 
-        // Get today's plan to get the mealId
-        val plan = dailyMealPlanService.getTodaysMealPlan(userId)
-            ?: throw de.nogaemer.springhomepage.exceptions.IdNotFoundException("No meal plan found for today")
-
-        dailyMealPlanService.completeMealPlan(userId, plan.mealId)
+        dailyMealPlanService.completeMealPlan(userId)
 
         return ResponseEntity.ok().build()
     }
