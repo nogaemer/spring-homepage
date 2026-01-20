@@ -136,8 +136,8 @@ class MealCookHistoryService(
      *
      * ## Use Cases
      * - "You've cooked this 5 times" on meal detail
-     * - Personal rating history for a meal
-     * - Notes from previous cooks
+     * - Reviewing when and how often a meal was cooked
+     * - Showing familiarity with a meal based on past cooking history
      *
      * @param userId User identifier to filter by
      * @param mealId Meal identifier to filter by
