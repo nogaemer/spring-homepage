@@ -209,17 +209,11 @@ class DailyMealPlanService(
 
         incompletePlans.forEach { plan ->
             try {
-                // Log to cook history with null optional fields
+                // Log to cook history (this will also mark the plan as completed)
                 cookHistoryService.recordMealCooked(
                     userId = plan.userId,
                     mealId = plan.mealId
                 )
-
-                // Mark plan as completed
-                plan.isCompleted = true
-                plan.completedAt = LocalDateTime.now()
-                dailyMealPlanRepository.save(plan)
-
                 logger.info(
                     "Auto-completed plan - userId: ${plan.userId}, meal: ${plan.mealName}, " +
                             "plannedDate: ${plan.plannedDate}"
