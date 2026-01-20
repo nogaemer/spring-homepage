@@ -58,8 +58,8 @@ interface MealCookHistoryRepository : MongoRepository<MealCookHistory, String> {
      *
      * ## Use Cases
      * - Meal-specific cooking statistics
-     * - Personal rating history for a meal
-     * - Notes from previous cooks of same meal
+     * - Meal-specific cooking frequency and recency ("When did I last cook this?")
+     * - Timeline of this user's cooks of the meal, including associated images where available
      *
      * ## Index Usage
      * Uses compound index (userId ASC, cookedAt DESC) plus meal filter
