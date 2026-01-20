@@ -2,6 +2,7 @@ package de.nogaemer.springhomepage.main.meals.cookhistory
 
 import de.nogaemer.springhomepage.exceptions.IdNotFoundException
 import de.nogaemer.springhomepage.main.meals.MealRepository
+import de.nogaemer.springhomepage.main.meals.models.Meal
 import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -72,8 +73,9 @@ class DailyMealPlanService(
         logger.debug("Marking meal for today - userId: $userId, mealId: $mealId")
 
         // Fetch meal details for denormalization
-        val meal = mealRepository.findById(ObjectId(mealId))
-            ?: throw IdNotFoundException("Meal not found with id: $mealId")
+        val meal: Meal = mealRepository.findById(ObjectId(mealId)).orElseThrow {
+            IdNotFoundException("Meal not found with id: $mealId")
+        }
 
         val today = LocalDate.now()
 
@@ -81,8 +83,8 @@ class DailyMealPlanService(
         dailyMealPlanRepository.deleteByUserIdAndPlannedDate(userId, today)
         logger.debug("Deleted existing plan for today if any - userId: $userId, date: $today")
 
-        // Get first image URL if available
-        val mealImageUrl = meal.images?.firstOrNull()?.url
+        // Get first image thumbnail if available
+        val mealImageUrl: String? = meal.images?.firstOrNull()?.thumbnail
 
         // Create new plan
         val dailyPlan = DailyMealPlan(
