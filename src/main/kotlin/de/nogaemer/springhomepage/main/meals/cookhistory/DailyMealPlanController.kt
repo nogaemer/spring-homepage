@@ -1,7 +1,6 @@
 package de.nogaemer.springhomepage.main.meals.cookhistory
 
 import de.nogaemer.springhomepage.user.UserService
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -76,7 +75,7 @@ class DailyMealPlanController(
      * @return ResponseEntity containing created DailyMealPlanDto
      * @throws IdNotFoundException If meal does not exist
      */
-    @PostMapping("/mark-today")
+    @PostMapping("/today")
     fun markMealForToday(
         @RequestBody request: MarkMealRequest
     ): ResponseEntity<DailyMealPlanDto> {
